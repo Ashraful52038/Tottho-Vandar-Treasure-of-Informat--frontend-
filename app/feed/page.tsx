@@ -27,6 +27,7 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Empty, Input, MenuProps, Selec
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import SignupModal from '../(auth)/signup/page';
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -67,6 +68,8 @@ export default function FeedPage() {
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   // Check if mobile view
   useEffect(() => {
@@ -375,7 +378,7 @@ export default function FeedPage() {
                   </Button>
                   <Button 
                     type="primary" 
-                    onClick={handleSignup} 
+                    onClick={() => setIsSignupOpen(true)}
                     className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
                     size="middle"
                   >
@@ -384,6 +387,14 @@ export default function FeedPage() {
                   </Button>
                 </Space>
               )}
+               <SignupModal
+                isOpen={isSignupOpen}
+                onClose={() => setIsSignupOpen(false)}
+                onLoginClick={() => {
+                    setIsSignupOpen(false);
+                    setIsLoginOpen(true);
+                }}
+              />
             </div>
 
             {/* Mobile Menu Button */}

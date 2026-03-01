@@ -3,14 +3,20 @@
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { clearError, signup } from '@/store/slices/authSlice';
 import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Form, Input, message, Typography } from "antd";
+import { Alert, Button, Form, Input, message, Modal, Typography } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from 'react';
 
 const { Title, Text } = Typography;
 
-export default function SignupPage() {
+interface SignupModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onLoginClick: () => void;
+}
+
+export default function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const { isLoading, error, isAuthenticated, user } = useAppSelector((state) => state.auth);
@@ -18,17 +24,19 @@ export default function SignupPage() {
 
     // Error clear when component unmounts
     useEffect(() => {
-        return () => {
+        if (!isOpen) {
             dispatch(clearError());
-        };
-    }, [dispatch]);
+            form.resetFields();
+        }
+    }, [isOpen, dispatch, form]);
 
     // Redirect if already authenticated
     useEffect(() => {
         if (isAuthenticated && user) {
+            onClose();
             router.push(user.verified ? '/feed' : '/verify-email');
         }
-    }, [isAuthenticated, user, router]);
+    }, [isAuthenticated, user, router, onClose]);
 
     const onFinish = async (values: any) => {
         try {
@@ -40,6 +48,7 @@ export default function SignupPage() {
 
             // Success
             message.success('Account created! Please verify your email.');
+            onClose();
             router.push('/verify-email');
         } catch (err: any) {
             const errorMsg = typeof err === 'string' ? err : err?.message || '';
@@ -55,8 +64,14 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-            <Card className="w-full max-w-md shadow-lg dark:bg-gray-800 dark:border-gray-700">
+            <Modal
+                title={null}
+                open={isOpen}
+                onCancel={onClose}
+                footer={null}
+                width={450}
+                centered
+            >
                 <div className="text-center mb-8">
                     <Title level={2} className="dark:text-white">Create New Account</Title>
                     <Text type="secondary" className="dark:text-gray-400">
@@ -209,7 +224,6 @@ export default function SignupPage() {
                         </Text>
                     </div>
                 </Form>
-            </Card>
-        </div>
+            </Modal>
     );
 }
