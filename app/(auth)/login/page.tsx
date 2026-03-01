@@ -1,25 +1,42 @@
 'use client';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
-import { login } from '@/store/slices/authSlice';
+import { clearError, login } from '@/store/slices/authSlice';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, Typography } from "antd";
+import { Button, Form, Input, Modal, Typography } from "antd";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useEffect } from 'react';
 
 const {Title , Text} = Typography;
 
-export default function LoginPage(){
+interface LoginModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSignUpClick: () => void;
+}
+
+export default function LoginModal({isOpen, onClose, onSignUpClick}: LoginModalProps){
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { isLoading, isAuthenticated, error } = useAppSelector((state) => state.auth);
+     const [form] = Form.useForm();
+    const { isLoading, isAuthenticated, error, user } = useAppSelector((state) => state.auth);
+
+    // Form reset when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            dispatch(clearError());
+            form.resetFields();
+        }
+    }, [isOpen, dispatch, form]);
+
 
     useEffect(()=>{
         if (isAuthenticated) {
+        onClose();
         router.push('/feed');
         }
-    },[isAuthenticated, router]);
+    },[isAuthenticated, router, onClose]);
 
     const onFinish = async (values: any) => {
     try {
@@ -27,20 +44,22 @@ export default function LoginPage(){
         email: values.email, 
         password: values.password 
         })).unwrap();
-        
-        // Success - useEffect redirect করবে
-        console.log('Login successful');
     } catch (err) {
         console.error('Login failed:', err);
-        // Error already shown in message
-    }
+        }
     };
 
     return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
-    <Card className="w-full max-w-md shadow-lg">
-        <div className="text-center mb-8">
-            <Title level={2}>Welcome</Title>
+        <Modal
+            title={null}
+            open={isOpen}
+            onCancel={onClose}
+            footer={null}
+            width={400}
+            centered
+        >
+            <div className="text-center mb-8">
+            <Title level={2}>Welcome to Tottho Vandar</Title>
             <Text type="secondary">Login to your account</Text>
         </div>
 
@@ -89,7 +108,6 @@ export default function LoginPage(){
             </Text>
         </div>
         </Form>
-        </Card>
-        </div>
+    </Modal>
     );
 }

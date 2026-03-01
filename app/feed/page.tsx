@@ -27,6 +27,7 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Empty, Input, MenuProps, Selec
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import LoginModal from '../(auth)/login/page';
 import SignupModal from '../(auth)/signup/page';
 
 const { TabPane } = Tabs;
@@ -370,7 +371,7 @@ export default function FeedPage() {
                 <Space size={4} className="lg:space-x-2">
                   <Button 
                     type="text" 
-                    onClick={handleLogin}
+                    onClick={() => setIsLoginOpen(true)}
                     className="text-secondary hover:text-primary"
                     size="middle"
                   >
@@ -387,14 +388,6 @@ export default function FeedPage() {
                   </Button>
                 </Space>
               )}
-               <SignupModal
-                isOpen={isSignupOpen}
-                onClose={() => setIsSignupOpen(false)}
-                onLoginClick={() => {
-                    setIsSignupOpen(false);
-                    setIsLoginOpen(true);
-                }}
-              />
             </div>
 
             {/* Mobile Menu Button */}
@@ -431,6 +424,24 @@ export default function FeedPage() {
           </div>
         </div>
       </nav>
+
+       {/* Login, SignUp Modal */}
+        <LoginModal
+            isOpen={isLoginOpen}
+            onClose={() => setIsLoginOpen(false)}
+            onSignUpClick={() => {
+                setIsLoginOpen(false);
+                setIsSignupOpen(true);
+            }}
+        />
+        <SignupModal
+          isOpen={isSignupOpen}
+          onClose={() => setIsSignupOpen(false)}
+          onLoginClick={() => {
+              setIsSignupOpen(false);
+              setIsLoginOpen(true);
+          }}
+        />
 
       {/* Mobile Search Drawer */}
       <Drawer
