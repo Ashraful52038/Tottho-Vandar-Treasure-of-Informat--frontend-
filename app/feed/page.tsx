@@ -1,4 +1,3 @@
-// app/feed/page.tsx
 'use client';
 
 import Navbar from '@/components/layout/Navbar';
@@ -27,7 +26,7 @@ const TOPICS = [
   'Data Science', 'Machine Learning', 'UI/UX', 'Startup'
 ];
 
-// Featured Authors - এটা API থেকে আসবে পরে
+// Featured Authors
 const FEATURED_AUTHORS = [
   { id: 1, name: 'Sarah Johnson', role: 'Tech Lead at Google', followers: '12.5K' },
   { id: 2, name: 'Michael Chen', role: 'AI Researcher', followers: '8.2K' },
@@ -44,8 +43,14 @@ export default function FeedPage() {
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // ✅ Solution: Client-side only rendering
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Check if mobile view
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
@@ -55,7 +60,6 @@ export default function FeedPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Dark mode initialization
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -67,12 +71,13 @@ export default function FeedPage() {
     }
   }, []);
 
-  // Real data from backend
   const posts = storePosts || [];
 
   useEffect(() => {
-    loadPosts();
-  }, [dispatch, retryCount, selectedTopic, searchQuery]);
+    if (isMounted) {
+      loadPosts();
+    }
+  }, [dispatch, retryCount, selectedTopic, searchQuery, isMounted]);
 
   const loadPosts = async () => {
     try {
@@ -107,7 +112,7 @@ export default function FeedPage() {
       router.push('/login?redirect=/posts/create');
     } else if (!user.verified) {
       message.warning('Please verify your email before posting');
-      router.push('/verify-email/sent');
+      router.push('/verify-email');
     } else {
       router.push('/posts/create');
     }
@@ -120,6 +125,15 @@ export default function FeedPage() {
   const handleSignup = () => {
     router.push('/signup?redirect=/feed');
   };
+
+  // ✅ Show loading until mounted
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   // Loading state
   if (isLoading && posts.length === 0) {
@@ -153,7 +167,7 @@ export default function FeedPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header - Responsive text sizes */}
+        {/* Header */}
         <div className="text-center mb-8 sm:mb-10 lg:mb-12">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold heading-color mb-2 sm:mb-3 lg:mb-4 px-4">
             {user ? `Welcome back, ${user.name}!` : 'Welcome to Tottho Vandar'}
@@ -183,7 +197,7 @@ export default function FeedPage() {
           </div>
         )}
 
-        {/* Search and Filter Bar - Responsive */}
+        {/* Search and Filter Bar */}
         <div className="mb-6 sm:mb-8 px-4">
           <div className="card-bg rounded-lg shadow-sm p-3 sm:p-4 transition-colors duration-300">
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
@@ -227,7 +241,7 @@ export default function FeedPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 px-4">
           {/* Main Feed */}
           <div className="lg:col-span-8">
-            {/* Feed Tabs - Responsive */}
+            {/* Feed Tabs */}
             <Tabs 
               defaultActiveKey="for-you" 
               className="mb-4 sm:mb-6"
@@ -315,7 +329,7 @@ export default function FeedPage() {
             />
           </div>
 
-          {/* Sidebar - Hidden on mobile, visible on desktop */}
+          {/* Sidebar */}
           <div className="hidden lg:block lg:col-span-4">
             {/* Recommended Topics */}
             <div className="card-bg rounded-lg shadow-sm p-5 lg:p-6 mb-6 transition-colors duration-300">
@@ -381,7 +395,7 @@ export default function FeedPage() {
               </div>
             </div>
 
-            {/* Reading List - if user is logged in */}
+            {/* Reading List */}
             {user && (
               <div className="card-bg rounded-lg shadow-sm p-5 lg:p-6 transition-colors duration-300">
                 <h2 className="text-base lg:text-lg font-semibold heading-color mb-3 lg:mb-4 flex items-center gap-2">

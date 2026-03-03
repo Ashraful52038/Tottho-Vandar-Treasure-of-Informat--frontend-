@@ -186,7 +186,7 @@ const authSlice = createSlice({
             })
             .addCase(login.fulfilled, (state, action: PayloadAction<any>) => {
                 state.isLoading = false;
-                
+                console.log('Login payload:', action.payload);
                 // Check response type
                 if (isAuthResponse(action.payload)) {
                     state.isAuthenticated = true;
@@ -229,7 +229,6 @@ const authSlice = createSlice({
                 
                 const err = action.payload as any;
                 
-                // সিম্পল - error property থাকলে সেটা নিন, না হলে default
                 state.error = err?.error || err?.message || 'Signup failed';
                 
                 message.error(state.error);

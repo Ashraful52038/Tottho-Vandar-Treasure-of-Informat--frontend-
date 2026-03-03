@@ -11,21 +11,29 @@ export interface User {
 }
 
 export interface Post {
-  id: string;
+  id: string | number;
   title: string;
   content: string;
   excerpt?: string;
-  authorId: string;
-  author?: User;
-  tags: string[];
-  likes: number;
+  authorId?: string | number;
+  author?: {
+    id: string | number;
+    name: string;
+    email?: string;
+    avatar?: string | null;
+  } | User;  // ✅ both formats accepted
+  tags: string[] | any[];
+  featuredImage?: string | null;
+  likes?: number;
   likesCount?: number;
+  comments?: number;
   commentsCount?: number;
-  comments?: Comment[];
+  readingTime?: number;
+  published?: boolean;
+  status?: 'draft' | 'published';
   createdAt: string;
   updatedAt: string;
-  featuredImage?: string;
-  readingTime?: number;
+  isLiked?: boolean;
 }
 
 export interface LoginRequest {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
-import { createPost } from '@/store/slices/postSlice';
+import { createPost, fetchTags } from '@/store/slices/postSlice';
 import {
   ArrowLeftOutlined,
   PlusOutlined
@@ -19,24 +19,12 @@ import {
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-quill/dist/quill.snow.css';
 
-// Rich Text Editor (dynamic import for SSR)
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-
-const { TextArea } = Input;
 const { Option } = Select;
 
-// Available tags/topics
-const AVAILABLE_TAGS = [
-  'Programming', 'Technology', 'AI', 'Web Development',
-  'Mobile Development', 'Cloud Computing', 'DevOps', 'Cybersecurity',
-  'Data Science', 'Machine Learning', 'UI/UX', 'Startup',
-  'Blockchain', 'Career', 'Tutorial', 'News'
-];
-
-// Quill modules configuration
 const modules = {
   toolbar: [
     [{ header: [1, 2, 3, 4, 5, 6, false] }],
@@ -52,29 +40,118 @@ const modules = {
 export default function CreatePostPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { isLoading } = useAppSelector((state) => state.posts);
+  const { isLoading, tags: storeTags } = useAppSelector((state) => state.posts);
   const { user } = useAppSelector((state) => state.auth);
   const [form] = Form.useForm();
   const [content, setContent] = useState('');
   const [featuredImage, setFeaturedImage] = useState<string>('');
   const [uploading, setUploading] = useState(false);
+  const [availableTags, setAvailableTags] = useState<any[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Redirect if not logged in
-  if (!user) {
-    router.push('/login?redirect=/posts/create');
-    return null;
-  }
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  // Redirect if email not verified
-  if (!user.verified) {
-    router.push('/verify-email/sent');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchTags());
+    }
+  }, [dispatch, user]);
+
+  useEffect(() => {
+    if (storeTags && storeTags.length > 0) {
+      console.log('Tags from database:', storeTags);
+      setAvailableTags(storeTags);
+    }
+  }, [storeTags]);
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login?redirect=/posts/create');
+      return;
+    }
+    if (user && !user.verified) {
+      router.push('/verify-email');
+      return;
+    }
+  }, [user, router]);
+
+  const handleSaveDraft = async () => {
+    try {
+      const values = form.getFieldsValue();
+      
+      if (!content || content === '<p><br></p>') {
+        message.warning('Please write some content');
+        return;
+      }
+
+      if (!values.tags || values.tags.length === 0) {
+        message.warning('Please add at least one tag');
+        return;
+      }
+
+      // ✅ Use tagNames directly
+      const tagNames = values.tags;
+
+      await dispatch(createPost({
+        title: values.title,
+        content: content,
+        tagNames: tagNames,
+        featuredImage: featuredImage || undefined,
+        published: false,
+      })).unwrap();
+
+      message.success('Post saved as draft!');
+      router.push('/feed');
+    } catch (error: any) {
+      console.error('Save draft error:', error);
+      message.error(error?.response?.data?.error || 'Failed to save draft');
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      const values = form.getFieldsValue();
+      
+      const hasContent = content && content.trim() !== '' && content !== '<p><br></p>';
+      if (!hasContent) {
+        message.warning('Please write some content');
+        return;
+      }
+
+      if (!values.tags || values.tags.length === 0) {
+        message.warning('Please add at least one tag');
+        return;
+      }
+
+      // ✅ Use tagNames directly (this is what backend requires)
+      const tagNames = values.tags;
+      console.log('Publishing with tag names:', tagNames);
+
+      const postData = {
+        title: values.title,
+        content: content,
+        tagNames: tagNames,
+        featuredImage: featuredImage || undefined,
+        published: true,
+      };
+
+      console.log('Sending to backend:', postData);
+
+      await dispatch(createPost(postData)).unwrap();
+
+      message.success('Post published successfully!');
+      router.push('/feed');
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      message.error(error?.response?.data?.error || 'Failed to publish post');
+    }
+  };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     try {
-      // Mock upload - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       const imageUrl = URL.createObjectURL(file);
       setFeaturedImage(imageUrl);
@@ -84,32 +161,7 @@ export default function CreatePostPage() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const onFinish = async (values: any) => {
-    if (!content) {
-      message.warning('Please write some content');
-      return;
-    }
-
-    if (!values.tags || values.tags.length === 0) {
-      message.warning('Please add at least one tag');
-      return;
-    }
-
-    try {
-      await dispatch(createPost({
-        title: values.title,
-        content: content,
-        tags: values.tags,
-        featuredImage: featuredImage || undefined,
-        status: values.status || 'published'
-      })).unwrap();
-
-      router.push('/feed');
-    } catch (error) {
-      // Error is already handled in slice
-    }
+    return false;
   };
 
   const uploadButton = (
@@ -119,9 +171,24 @@ export default function CreatePostPage() {
     </div>
   );
 
+  if (!isMounted || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (availableTags.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spin size="large" tip="Loading tags..." />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -134,15 +201,12 @@ export default function CreatePostPage() {
               </h1>
             </div>
             <Space>
-              <Button 
-                onClick={() => form.setFieldValue('status', 'draft')}
-                disabled={isLoading}
-              >
+              <Button onClick={handleSaveDraft} disabled={isLoading}>
                 Save Draft
               </Button>
-              <Button 
-                type="primary" 
-                onClick={() => form.submit()}
+              <Button
+                type="primary"
+                onClick={handlePublish}
                 loading={isLoading}
                 className="bg-green-600 hover:bg-green-700"
               >
@@ -153,15 +217,13 @@ export default function CreatePostPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Form
           form={form}
           layout="vertical"
-          onFinish={onFinish}
+          onFinish={handlePublish}
           className="space-y-6"
         >
-          {/* Title */}
           <Form.Item
             name="title"
             rules={[
@@ -177,7 +239,6 @@ export default function CreatePostPage() {
             />
           </Form.Item>
 
-          {/* Featured Image */}
           <div className="bg-white rounded-lg p-6">
             <h3 className="text-lg font-medium mb-4">Featured Image</h3>
             <Upload
@@ -199,7 +260,6 @@ export default function CreatePostPage() {
             {uploading && <Spin className="ml-4" />}
           </div>
 
-          {/* Content Editor */}
           <div className="bg-white rounded-lg p-6">
             <h3 className="text-lg font-medium mb-4">Content</h3>
             <ReactQuill
@@ -212,7 +272,6 @@ export default function CreatePostPage() {
             />
           </div>
 
-          {/* Tags */}
           <div className="bg-white rounded-lg p-6">
             <h3 className="text-lg font-medium mb-4">Tags</h3>
             <Form.Item
@@ -224,14 +283,11 @@ export default function CreatePostPage() {
               <Select
                 mode="multiple"
                 placeholder="Select tags for your post"
-                optionLabelProp="label"
                 className="w-full"
               >
-                {AVAILABLE_TAGS.map(tag => (
-                  <Option key={tag} value={tag} label={tag}>
-                    <div className="flex items-center">
-                      <span className="text-gray-700">{tag}</span>
-                    </div>
+                {availableTags.map(tag => (
+                  <Option key={tag.id} value={tag.name}>
+                    {tag.name}
                   </Option>
                 ))}
               </Select>
@@ -240,11 +296,6 @@ export default function CreatePostPage() {
               Add up to 5 tags to help readers find your story
             </p>
           </div>
-
-          {/* Hidden status field */}
-          <Form.Item name="status" hidden>
-            <Input />
-          </Form.Item>
         </Form>
       </div>
     </div>

@@ -44,6 +44,7 @@ export default function LoginModal({isOpen, onClose, onSignUpClick}: LoginModalP
         email: values.email, 
         password: values.password 
         })).unwrap();
+        console.log('Login result:', resultAction); 
     } catch (err) {
         console.error('Login failed:', err);
         }

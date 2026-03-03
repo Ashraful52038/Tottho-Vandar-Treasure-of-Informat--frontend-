@@ -15,7 +15,7 @@ import moment from 'moment';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 
 interface PostCardProps {
   post: Post;
@@ -23,21 +23,45 @@ interface PostCardProps {
 }
 
 // Helper function to normalize post data (handle different data structures)
-const normalizePost = (post: any) => {
-  return {
-    ...post,
-    // Ensure author exists
-    author: post.author || {
-      id: post.authorId || 'unknown',
+const normalizePost = (post: any): Post => {
+  // Handle author
+  let author = post.author;
+  if (!author && post.authorId) {
+    author = {
+      id: post.authorId,
+      name: post.authorName || 'Unknown Author',
+      avatar: post.authorAvatar || null
+    };
+  } else if (!author) {
+    author = {
+      id: 'unknown',
       name: 'Unknown Author',
       avatar: null
-    },
-    // Ensure tags array
-    tags: post.tags || [],
-    // Ensure counts
+    };
+  }
+
+  // Handle tags
+  let tags = post.tags || [];
+  if (typeof tags[0] === 'object' && tags[0]?.name) {
+    tags = tags.map((t: any) => t.name);
+  }
+
+  return {
+    id: post.id || '',
+    title: post.title || '',
+    content: post.content || '',
+    excerpt: post.excerpt || post.content?.substring(0, 200),
+    authorId: post.authorId || author.id,
+    author: author,
+    tags: tags,
+    featuredImage: post.featuredImage || post.coverImage,
+    likes: post.likes || post.likesCount || 0,
     likesCount: post.likesCount || post.likes || 0,
+    comments: post.comments || post.commentsCount || 0,
     commentsCount: post.commentsCount || post.comments || 0,
-    // Ensure timestamps
+    readingTime: post.readingTime || Math.ceil((post.content?.length || 0) / 1000),
+    published: post.published || post.status === 'published',
+    status: post.status || (post.published ? 'published' : 'draft'),
     createdAt: post.createdAt || new Date().toISOString(),
     updatedAt: post.updatedAt || post.createdAt || new Date().toISOString()
   };
@@ -47,7 +71,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(originalPost.isLiked || false);
   
   // Normalize the post data to handle different structures
   const post = normalizePost(originalPost);
@@ -59,7 +83,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
       return;
     }
     try {
-      await dispatch(likePost(post.id)).unwrap();
+      await dispatch(likePost(post.id as string)).unwrap();
       setLiked(!liked);
     } catch (error) {
       console.error('Failed to like post:', error);
@@ -68,7 +92,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
 
   const handleClick = () => {
     if (onPostClick) {
-      onPostClick(post.id);
+      onPostClick(post.id as string);
     } else {
       router.push(`/posts/${post.id}`);
     }
@@ -77,6 +101,11 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
   const handleCommentClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/posts/${post.id}#comments`);
+  };
+
+  const handleTagClick = (e: React.MouseEvent, tag: string) => {
+    e.stopPropagation();
+    router.push(`/feed?tag=${encodeURIComponent(tag)}`);
   };
 
   return (
@@ -91,7 +120,6 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             src={post.featuredImage}
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
             onError={(e) => {
-              // Handle image load error
               (e.target as HTMLImageElement).style.display = 'none';
             }}
           />
@@ -108,20 +136,20 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
           className="border border-custom"
         />
         <div className="ml-3">
-          <Text strong className="heading-color hover:text-green-600 dark:hover:text-green-400 transition-colors">
+          <div className="font-medium heading-color hover:text-green-600 dark:hover:text-green-400 transition-colors">
             {post.author?.name || 'Unknown Author'}
-          </Text>
+          </div>
           <div className="flex items-center text-xs text-secondary">
             <Tooltip title={moment(post.createdAt).format('LLLL')}>
               <ClockCircleOutlined className="mr-1" />
               <span>{moment(post.createdAt).fromNow()}</span>
             </Tooltip>
-            {post.readingTime && (
+            {post.readingTime ? (
               <>
                 <span className="mx-2">·</span>
                 <span>{post.readingTime} min read</span>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -136,7 +164,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
         ellipsis={{ rows: 3, expandable: false }} 
         className="paragraph-color mb-3"
       >
-        {post.excerpt || post.content}
+        {post.excerpt || post.content?.replace(/<[^>]*>/g, '').substring(0, 200)}
       </Paragraph>
 
       {/* Tags */}
@@ -146,8 +174,8 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             <Tag 
               key={tag} 
               color="blue" 
-              className="mr-1 px-2 py-1 text-xs dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800"
-              onClick={(e) => e.stopPropagation()}
+              className="mr-1 px-2 py-1 text-xs dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800 cursor-pointer hover:opacity-80"
+              onClick={(e) => handleTagClick(e, tag)}
             >
               {tag}
             </Tag>
@@ -172,7 +200,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             onClick={handleLike}
             className="flex items-center text-secondary hover:text-red-500 dark:hover:text-red-400"
           >
-            <span className="ml-1">{post.likesCount}</span>
+            <span className="ml-1">{post.likesCount || post.likes || 0}</span>
           </Button>
           
           <Button 
@@ -181,7 +209,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             onClick={handleCommentClick}
             className="flex items-center text-secondary hover:text-blue-500 dark:hover:text-blue-400"
           >
-            <span className="ml-1">{post.commentsCount}</span>
+            <span className="ml-1">{post.commentsCount || post.comments || 0}</span>
           </Button>
         </Space>
 
