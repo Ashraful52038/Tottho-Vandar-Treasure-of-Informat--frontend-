@@ -13,12 +13,19 @@ import {
 } from '@ant-design/icons';
 import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import moment from 'moment';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.bubble.css'; // bubble theme ব্যবহার করুন
+import { useEffect, useState } from 'react';
 
 const { Title } = Typography;
+
+// Dynamic import for ReactQuill with ssr: false
+const ReactQuill = dynamic(() => import('react-quill'), { 
+  ssr: false,
+  loading: () => <p className="text-sm paragraph-color">Loading preview...</p>
+});
+
+import 'react-quill/dist/quill.bubble.css';
 
 interface PostCardProps {
   post: Post;
@@ -43,7 +50,6 @@ const normalizePost = (post: any): Post => {
     };
   }
 
-  // Handle tags
   let tags: string[] = [];
   if (post.tags) {
     tags = post.tags.map((tag: any) => {
@@ -84,8 +90,13 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
   const [liked, setLiked] = useState(originalPost.isLiked || false);
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const post = normalizePost(originalPost);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -119,11 +130,17 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
     router.push(`/feed?tag=${encodeURIComponent(tag)}`);
   };
 
+  // Plain text fallback for server-side rendering
+  const getPlainTextPreview = () => {
+    if (!post.content) return '';
+    // Remove HTML tags for server-side preview
+    return post.content.replace(/<[^>]*>/g, '').substring(0, 150) + (post.content.length > 150 ? '...' : '');
+  };
 
   return (
     <Card 
       hoverable 
-      className="mb-6 cursor-pointer hover:shadow-xl transition-all duration-300 card-bg border-custom overflow-hidden rounded-xl"
+      className="cursor-pointer hover:shadow-xl transition-all duration-300 card-bg border-custom overflow-hidden rounded-xl"
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -172,14 +189,18 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             {post.title}
           </Title>
           
-          {/* Content Preview -*/}
+          {/* Content Preview - with SSR fix */}
           <div className="prose prose-sm max-w-none mb-3 line-clamp-2 text-sm paragraph-color">
-            <ReactQuill
-              value={post.content?.substring(0, 300) + (post.content?.length > 300 ? '...' : '')}
-              readOnly={true}
-              theme="bubble"
-              className="quill-preview"
-            />
+            {isMounted ? (
+              <ReactQuill
+                value={post.content?.substring(0, 300) + (post.content?.length > 300 ? '...' : '')}
+                readOnly={true}
+                theme="bubble"
+                className="quill-preview"
+              />
+            ) : (
+              <p className="text-sm paragraph-color">{getPlainTextPreview()}</p>
+            )}
           </div>
 
           {/* Tags */}
@@ -240,16 +261,16 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
 
         {/* Right side - Featured Image */}
         {post.featuredImage && !imageError ? (
-          <div className="md:w-48 lg:w-56 relative overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-r-xl">
-            <div className="h-full w-full min-h-45">
+          <div className="md:w-44 lg:w-48 relative overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-r-xl flex items-center">
+            <div className="w-full flex items-center justify-center">
               <img 
                 alt={post.title} 
                 src={post.featuredImage}
-                className={`w-full h-full object-cover transition-all duration-700 ${
+                className={`w-full object-cover transition-all duration-700 ${
                   isHovered ? 'scale-110' : 'scale-100'
                 }`}
                 onError={() => setImageError(true)}
-                style={{ minHeight: '150px', maxHeight: '180px' }}
+                style={{ height: '140px', marginTop: '100px' }}
               />
               <div className={`absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition-opacity duration-300 ${
                 isHovered ? 'opacity-100' : 'opacity-0'
@@ -257,7 +278,7 @@ export default function PostCard({ post: originalPost, onPostClick }: PostCardPr
             </div>
           </div>
         ) : (
-          <div className="md:w-48 lg:w-56 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 rounded-r-xl flex items-center justify-center min-h-45">
+          <div className="md:w-44 lg:w-48 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 rounded-r-xl flex items-center justify-center" style={{ height: '160px' }}>
             <span className="text-4xl text-green-700 dark:text-green-300">📷</span>
           </div>
         )}

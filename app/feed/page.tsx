@@ -126,7 +126,7 @@ export default function FeedPage() {
     router.push('/signup?redirect=/feed');
   };
 
-  // ✅ Show loading until mounted
+  // Show loading until mounted
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center">
@@ -255,7 +255,7 @@ export default function FeedPage() {
                     </span>
                   ),
                   children: (
-                    <div className="space-y-4 sm:space-y-6">
+                    <div className="space-y-6 sm:space-y-9">
                       {posts.length > 0 ? (
                         posts.map((post) => (
                           <PostCard key={post.id} post={post} />
