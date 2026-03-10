@@ -29,6 +29,7 @@ export const postService = {
     },
 
     createPost: async (data: any) => {
+        console.log('📤 Sending to backend:', data);
         const response = await axiosInstance.post('/posts', data);
         return response.data;
     },
@@ -68,7 +69,7 @@ export const postService = {
     uploadImage: async (file: File): Promise<{ url: string }> => {
     const formData = new FormData();
     formData.append('image', file);
-    const response = await axiosInstance.post('/upload', formData, {
+    const response = await axiosInstance.post('/upload/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;

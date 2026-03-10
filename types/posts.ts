@@ -14,6 +14,7 @@ export interface Post {
     } | User;
     tags: string[] | any[];
     featuredImage?: string | null;
+    coverImage?: string | null;
     likes?: number;
     likesCount?: number;
     comments?: number;

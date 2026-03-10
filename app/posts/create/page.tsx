@@ -1,5 +1,6 @@
 'use client';
 
+import { postService } from '@/lib/api/posts';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { createPost, fetchTags } from '@/store/slices/postSlice';
 import {
@@ -91,6 +92,11 @@ export default function CreatePostPage() {
         return;
       }
 
+      let imageUrl = featuredImage;
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        imageUrl = `http://localhost:8080${imageUrl}`;
+      }
+
       // Use tagNames directly
       const tagNames = values.tags;
 
@@ -98,7 +104,7 @@ export default function CreatePostPage() {
         title: values.title,
         content: content,
         tagNames: tagNames,
-        featuredImage: featuredImage || undefined,
+        featuredImage: imageUrl,
         published: false,
       })).unwrap();
 
@@ -128,11 +134,20 @@ export default function CreatePostPage() {
       const tagNames = values.tags;
       console.log('Publishing with tag names:', tagNames);
 
+      console.log('🔥 featuredImage before processing:', featuredImage);
+
+      let imageUrl = featuredImage;
+      if (imageUrl && !imageUrl.startsWith('http')) {
+        imageUrl = `http://localhost:8080${imageUrl}`;
+      }
+
+      console.log('🖼️ Processed imageUrl:', imageUrl);
+
       const postData = {
         title: values.title,
         content: content,
         tagNames: tagNames,
-        featuredImage: featuredImage || undefined,
+        featuredImage: imageUrl,
         published: true,
       };
 
@@ -151,24 +166,15 @@ export default function CreatePostPage() {
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     try {
+      const data = await postService.uploadImage(file);
       const formData = new FormData();
       formData.append('image', file);
 
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'}/upload/image`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      throw new Error('Upload failed');
-    }
-
-    const data = await response.json();
-    setFeaturedImage(data.url);
+      let imageUrl = data.url;
+        if (imageUrl && !imageUrl.startsWith('http')) {
+            imageUrl = `http://localhost:8080${imageUrl}`;
+        }
+    setFeaturedImage(imageUrl);
     message.success('Image uploaded successfully!');
     } catch (error) {
       message.error('Failed to upload image');
@@ -177,13 +183,6 @@ export default function CreatePostPage() {
     }
     return false;
   };
-
-  const uploadButton = (
-    <div>
-      <PlusOutlined />
-      <div style={{ marginTop: 8 }}>Upload</div>
-    </div>
-  );
 
   if (!isMounted || !user) {
     return (
@@ -266,12 +265,35 @@ export default function CreatePostPage() {
               }}
             >
               {featuredImage ? (
-                <img src={featuredImage} alt="featured" style={{ width: '100%' }} />
+                <div className="relative group">
+                  <img 
+                    src={featuredImage} 
+                    alt="featured" 
+                    className="w-full h-full object-cover rounded-lg"
+                    style={{ maxWidth: '200px', maxHeight: '200px' }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                    <p className="text-white text-sm">Click to change</p>
+                  </div>
+                </div>
               ) : (
-                uploadButton
+                <div className="flex flex-col items-center">
+                  <PlusOutlined className="text-2xl" />
+                  <div style={{ marginTop: 8 }}>Upload Image</div>
+                </div>
               )}
             </Upload>
             {uploading && <Spin className="ml-4" />}
+            {featuredImage && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-500 mb-2">Preview:</p>
+              <img 
+                src={featuredImage} 
+                alt="preview" 
+                className="max-w-full max-h-75 object-contain border rounded-lg"
+              />
+            </div>
+          )}
           </div>
 
           <div className="bg-white rounded-lg p-6">
