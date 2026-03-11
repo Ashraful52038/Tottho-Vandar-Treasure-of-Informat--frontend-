@@ -49,6 +49,7 @@ export default function CreatePostPage() {
   const [uploading, setUploading] = useState(false);
   const [availableTags, setAvailableTags] = useState<any[]>([]);
   const [isMounted, setIsMounted] = useState(false);
+  
 
   useEffect(() => {
     setIsMounted(true);
@@ -132,9 +133,6 @@ export default function CreatePostPage() {
       }
 
       const tagNames = values.tags;
-      console.log('Publishing with tag names:', tagNames);
-
-      console.log('🔥 featuredImage before processing:', featuredImage);
 
       let imageUrl = featuredImage;
       if (imageUrl && !imageUrl.startsWith('http')) {
@@ -150,8 +148,6 @@ export default function CreatePostPage() {
         featuredImage: imageUrl,
         published: true,
       };
-
-      console.log('Sending to backend:', postData);
 
       await dispatch(createPost(postData)).unwrap();
 
@@ -307,7 +303,7 @@ export default function CreatePostPage() {
               className="min-h-100"
             />
           </div>
-
+            {/* Tags */}
           <div className="bg-white rounded-lg p-6">
             <h3 className="text-lg font-medium mb-4">Tags</h3>
             <Form.Item

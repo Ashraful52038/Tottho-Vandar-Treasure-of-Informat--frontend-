@@ -55,14 +55,7 @@ export const fetchPostById = createAsyncThunk(
 export const createPost = createAsyncThunk(
     'posts/createPost',
     async (postData: any, { rejectWithValue }) => {
-        try {
-            // Make sure tagNames is always sent
-            if (!postData.tagNames && postData.tagIds) {
-                // If only tagIds provided, try to get names from availableTags
-                // But better to always send tagNames from frontend
-                console.warn('tagNames missing, backend requires it');
-            }
-            
+        try {            
             const response = await postService.createPost(postData);
             message.success('Post created successfully!');
             return response;
@@ -162,7 +155,6 @@ const postSlice = createSlice({
             })
             .addCase(fetchPosts.fulfilled, (state, action: PayloadAction<any>) => {
                 state.isLoading = false;
-                //Check if response has posts property
                 if (action.payload?.posts) {
                     state.posts = action.payload.posts;
                     state.totalPosts = action.payload.total || action.payload.posts.length;
@@ -186,7 +178,6 @@ const postSlice = createSlice({
             })
             .addCase(fetchPostById.fulfilled, (state, action: PayloadAction<any>) => {
                 state.isLoading = false;
-                // Handle both {post} and direct post
                 state.currentPost = action.payload?.post || action.payload;
             })
             .addCase(fetchPostById.rejected, (state, action) => {
@@ -203,10 +194,47 @@ const postSlice = createSlice({
                 const newPost = action.payload?.post || action.payload;
                 if (newPost) {
                     state.posts = [newPost, ...state.posts];
-                    console.log('New post added to feed:', newPost); // Debug
+                    console.log('New post added to feed:', newPost);
                 }
             })
             .addCase(createPost.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+
+            // ✅ এখানে updatePost এর জন্য কেস যোগ করুন
+            .addCase(updatePost.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(updatePost.fulfilled, (state, action: PayloadAction<any>) => {
+                state.isLoading = false;
+                
+                // আপডেট হওয়া পোস্টটি নিন
+                const updatedPost = action.payload?.post || action.payload;
+                
+                if (updatedPost?.id) {
+                    console.log('✅ Post updated in Redux:', updatedPost);
+                    
+                    // 1. currentPost আপডেট করুন (এটাই মূল সমাধান)
+                    if (state.currentPost?.id === updatedPost.id) {
+                        state.currentPost = updatedPost;
+                    }
+                    
+                    // 2. posts লিস্টে আপডেট করুন
+                    const index = state.posts.findIndex(p => p.id === updatedPost.id);
+                    if (index !== -1) {
+                        state.posts[index] = updatedPost;
+                    }
+                    
+                    // 3. myPosts লিস্টে আপডেট করুন
+                    const myIndex = state.myPosts.findIndex(p => p.id === updatedPost.id);
+                    if (myIndex !== -1) {
+                        state.myPosts[myIndex] = updatedPost;
+                    }
+                }
+            })
+            .addCase(updatePost.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
             })
@@ -216,6 +244,9 @@ const postSlice = createSlice({
                 state.posts = state.posts.filter(post => post.id !== action.payload);
                 if (state.myPosts.length > 0) {
                     state.myPosts = state.myPosts.filter(post => post.id !== action.payload);
+                }
+                if (state.currentPost?.id === action.payload) {
+                    state.currentPost = null;
                 }
             })
 
@@ -242,15 +273,13 @@ const postSlice = createSlice({
                 const updatedPost = action.payload;
                 if (!updatedPost?.id) return;
                 
-                // Update in posts array
                 const index = state.posts.findIndex(p => p.id === updatedPost.id);
                 if (index !== -1) {
                     state.posts[index] = updatedPost;
                 }
                 
-                // Update current post if it's the same
                 if (state.currentPost?.id === updatedPost.id) {
-                state.currentPost = updatedPost;
+                    state.currentPost = updatedPost;
                 }
             })
 

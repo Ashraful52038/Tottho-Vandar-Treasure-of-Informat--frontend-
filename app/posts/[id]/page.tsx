@@ -32,7 +32,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import 'react-quill/dist/quill.snow.css';
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(
+  () => import('react-quill').then((mod) => mod.default),
+  { 
+    ssr: false,
+    loading: () => <div className="h-32 bg-gray-100 animate-pulse rounded" />
+  }
+);
 
 // Post normalize function
 const normalizePost = (post: any): Post => {
@@ -92,14 +98,23 @@ export default function PostDetailPage() {
   const { user } = useAppSelector((state) => state.auth);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [imageTimestamp, setImageTimestamp] = useState(Date.now());
 
   useEffect(() => {
     if (params.id) {
       dispatch(fetchPostById(params.id as string));
     }
   }, [dispatch, params.id]);
+
+  // Debug log and update timestamp when post changes
+  useEffect(() => {
+    if (currentPost) {
+      console.log('Post data:', currentPost);
+      console.log('Featured image:', currentPost.featuredImage);
+      console.log('Image URL:', getFullImageUrl(currentPost.featuredImage));
+      setImageTimestamp(Date.now()); // Update timestamp to force image refresh
+    }
+  }, [currentPost]);
 
   const handleLike = async () => {
     if (!user) {
@@ -129,16 +144,6 @@ export default function PostDetailPage() {
     router.push(`/posts/edit/${params.id}`);
   };
 
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    setImageDimensions({
-      width: img.naturalWidth,
-      height: img.naturalHeight
-    });
-    console.log('📏 Image dimensions:', img.naturalWidth, 'x', img.naturalHeight);
-    setImageError(false);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -164,7 +169,11 @@ export default function PostDetailPage() {
   const post = normalizePost(currentPost);
   const isAuthor = user?.id === post.authorId;
   const likesCount = post?.likesCount || post?.likes || 0;
-  const imageUrl = getFullImageUrl(post.featuredImage);
+  
+  // Add timestamp to image URL to prevent caching
+  const baseImageUrl = getFullImageUrl(post.featuredImage);
+  const imageUrl = baseImageUrl ? `${baseImageUrl}${baseImageUrl.includes('?') ? '&' : '?'}t=${imageTimestamp}` : '';
+  
   const tagNames = post.tags || [];
 
   return (
@@ -209,39 +218,25 @@ export default function PostDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <article className="bg-white rounded-2xl shadow-sm overflow-hidden border-0">
           
-          {/* Featured Image */}
+          {/* Featured Image with cache-busting timestamp */}
           {post.featuredImage && !imageError ? (
-            <div className="relative w-full bg-gray-100 flex justify-center">
+            <div className="w-full bg-gray-100">
               <img 
                 alt={post.title} 
                 src={imageUrl}
-                className="max-w-full h-auto object-contain"
-                style={{ 
-                  maxHeight: '80vh',
-                  width: 'auto'       
-                }}
+                className="w-full object-contain"
+                style={{ maxHeight: '500px' }}
                 onError={(e) => {
+                  console.error('Image failed to load:', imageUrl);
                   setImageError(true);
                 }}
-                onLoad={handleImageLoad}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                onLoad={() => console.log('Image loaded successfully:', imageUrl)}
               />
-              
-              {/* Image Dimensions Badge */}
-              {imageDimensions.width > 0 && (
-                <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
-                  {imageDimensions.width} x {imageDimensions.height}
-                </div>
-              )}
             </div>
           ) : (
             /* Gradient Fallback */
-            <div className="w-full h-96 bg-gradient-to-br from-purple-400 to-pink-400 flex flex-col items-center justify-center">
-              <span className="text-6xl mb-4">📝</span>
-              <span className="text-white font-medium text-xl opacity-90 line-clamp-2 px-4 text-center">
-                {post.title}
-              </span>
+            <div className="w-full h-64 bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center">
+              <span className="text-6xl">📝</span>
             </div>
           )}
 
@@ -277,11 +272,11 @@ export default function PostDetailPage() {
             </div>
 
             {/* Title */}
-            <h1 className="text-4xl font-serif font-bold mb-6 transition-all duration-300" >
+            <h1 className="text-4xl font-serif font-bold mb-6">
               {post.title}
             </h1>
 
-            {/* Content - এখন আর error দেবে না */}
+            {/* Content */}
             <div className="prose prose-lg max-w-none mb-8">
               <ReactQuill
                 value={post.content}

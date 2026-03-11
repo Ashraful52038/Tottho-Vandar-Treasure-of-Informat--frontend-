@@ -50,7 +50,7 @@ export interface Comment {
     createdAt: string;
     updatedAt: string;
     isLiked?: boolean;
-    parentId?: string; // for nested comments
+    parentId?: string;
     replies?: Comment[];
 }
 
