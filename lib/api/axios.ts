@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
+
 const axiosInstance = axios.create({
     baseURL: API_URL,
     withCredentials: true,
@@ -30,11 +31,6 @@ axiosInstance.interceptors.request.use(
 //Response interceptor
 axiosInstance.interceptors.response.use(
     (response)=>{
-        console.log('✅ [Axios] Response:', {
-            status: response.status,
-            url: response.config.url,
-            data: response.data
-        });
         return response;
     },
     async(error)=>{

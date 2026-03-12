@@ -135,7 +135,7 @@ const commentSlice = createSlice({
         const comment = state.comments.find(c => c.id === id);
         if (comment) {
           comment.likes = likes;
-          comment.isLiked = false; // ✅ unlike করলে isLiked false
+          comment.isLiked = false;
         }
       });
   },

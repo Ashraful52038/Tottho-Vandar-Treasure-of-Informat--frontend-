@@ -1,12 +1,11 @@
-// components/CommentItem.tsx
 'use client';
 
 import { Comment } from '@/types/comments';
 import {
-    DeleteOutlined,
-    LikeFilled,
-    LikeOutlined,
-    UserOutlined
+  DeleteOutlined,
+  LikeFilled,
+  LikeOutlined,
+  UserOutlined
 } from '@ant-design/icons';
 import { Avatar, Button, List } from 'antd';
 import moment from 'moment';
@@ -34,7 +33,7 @@ export const CommentItem = ({
     isAuthor
 }: CommentItemProps) => {
     const [showReplies, setShowReplies] = useState(true);
-    const isCommentAuthor = currentUser?.id === comment.author.id;
+    const isCommentAuthor = currentUser?.id === comment.author?.id;
     const canDelete = isCommentAuthor || isAuthor;
 
   const handleLikeClick = () => {

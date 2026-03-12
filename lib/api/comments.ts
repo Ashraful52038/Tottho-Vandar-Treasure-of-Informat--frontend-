@@ -2,7 +2,7 @@ import axiosInstance from "./axios";
 
 export const commentService = {
   getCommentsByPost: async (postId: string) => {
-    const response = await axiosInstance.get(`/posts/${postId}/comments`);
+    const response = await axiosInstance.get(`/comments/posts/${postId}`);
     return response.data;
   },
 
@@ -25,12 +25,12 @@ export const commentService = {
   },
 
   likeComment: async (id: string) => {
-    const response = await axiosInstance.post(`/comments/${id}/like`);
+    const response = await axiosInstance.post(`/likee/comments/${id}/like`);
     return response.data;
   },
 
   unlikeComment: async (id: string) => {
-    const response = await axiosInstance.delete(`/comments/${id}/like`);
+    const response = await axiosInstance.delete(`/likes/comments/${id}/like`);
     return response.data;
   },
 };

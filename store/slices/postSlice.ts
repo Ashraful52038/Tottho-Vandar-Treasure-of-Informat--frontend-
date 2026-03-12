@@ -202,7 +202,6 @@ const postSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // ✅ এখানে updatePost এর জন্য কেস যোগ করুন
             .addCase(updatePost.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -210,24 +209,19 @@ const postSlice = createSlice({
             .addCase(updatePost.fulfilled, (state, action: PayloadAction<any>) => {
                 state.isLoading = false;
                 
-                // আপডেট হওয়া পোস্টটি নিন
                 const updatedPost = action.payload?.post || action.payload;
                 
                 if (updatedPost?.id) {
-                    console.log('✅ Post updated in Redux:', updatedPost);
                     
-                    // 1. currentPost আপডেট করুন (এটাই মূল সমাধান)
                     if (state.currentPost?.id === updatedPost.id) {
                         state.currentPost = updatedPost;
                     }
                     
-                    // 2. posts লিস্টে আপডেট করুন
                     const index = state.posts.findIndex(p => p.id === updatedPost.id);
                     if (index !== -1) {
                         state.posts[index] = updatedPost;
                     }
                     
-                    // 3. myPosts লিস্টে আপডেট করুন
                     const myIndex = state.myPosts.findIndex(p => p.id === updatedPost.id);
                     if (myIndex !== -1) {
                         state.myPosts[myIndex] = updatedPost;
