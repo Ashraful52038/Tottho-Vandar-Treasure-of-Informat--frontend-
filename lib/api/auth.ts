@@ -11,6 +11,11 @@ export interface SignupData {
     password: string;
 }
 
+export interface ChangePasswordData {
+    currentPassword: string;
+    newPassword: string;
+}
+
 export interface AuthResponse{
     user: {
         id: string;
@@ -59,6 +64,11 @@ export const authService = {
 
     resetPassword: async (token: string, newPassword: string): Promise<MessageResponse> => {
         const response = await axiosInstance.post('/auth/reset-password', {token, newPassword});
+        return response.data;
+    },
+
+    changePassword: async (data: ChangePasswordData): Promise<MessageResponse> => {
+        const response = await axiosInstance.post('/auth/change-password', data);
         return response.data;
     },
 

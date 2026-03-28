@@ -17,13 +17,6 @@ interface AuthResponse {
     token: string;
 }
 
-interface MessageResponse {
-    message: string;
-}
-
-// Union type for all possible responses
-type ApiResponse = AuthResponse | MessageResponse | { user: User } | any;
-
 // Initial state object
 const initialAuthState: AuthState = {
     user: null,
@@ -144,6 +137,18 @@ export const resetPassword = createAsyncThunk(
     }
 );
 
+export const changePassword = createAsyncThunk(
+    'auth/changePassword',
+    async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }, { rejectWithValue }) => {
+        try {
+            const response = await authService.changePassword({ currentPassword, newPassword });
+            return response;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to change password');
+        }
+    }
+);
+
 export const getCurrentUser = createAsyncThunk(
     'auth/getCurrentUser',
     async (_, { rejectWithValue }) => {
@@ -175,6 +180,12 @@ const authSlice = createSlice({
         },
         clearError: (state) => {
             state.error = null;
+        },
+        updateUser: (state, action: PayloadAction<Partial<User>>) => {
+            if (state.user) {
+                state.user = { ...state.user, ...action.payload };
+                localStorage.setItem('user', JSON.stringify(state.user));
+            }
         },
     },
     extraReducers: (builder) => {
@@ -304,9 +315,23 @@ const authSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload as string;
                 message.error(action.payload as string);
+            })
+
+            // Change Password
+            .addCase(changePassword.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(changePassword.fulfilled, (state, action: PayloadAction<any>) => {
+                state.isLoading = false;
+                message.success(action.payload.message || 'Password changed successfully!');
+            })
+            .addCase(changePassword.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+                message.error(action.payload as string);
             });
     },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, updateUser } = authSlice.actions;
 export default authSlice.reducer;

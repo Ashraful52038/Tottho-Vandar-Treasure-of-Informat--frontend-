@@ -25,12 +25,7 @@ export const commentService = {
   },
 
   likeComment: async (id: string) => {
-    const response = await axiosInstance.post(`/likee/comments/${id}/like`);
-    return response.data;
-  },
-
-  unlikeComment: async (id: string) => {
-    const response = await axiosInstance.delete(`/likes/comments/${id}/like`);
+    const response = await axiosInstance.post(`/likes/comments/${id}`);
     return response.data;
   },
 };

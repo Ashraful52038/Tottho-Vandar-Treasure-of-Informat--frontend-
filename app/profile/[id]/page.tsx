@@ -1,6 +1,6 @@
-// app/profile/[id]/page.tsx
 'use client';
 
+import type { FollowUser, UserComment, UserLike, UserPost } from '@/lib/api/user';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import {
   fetchFollowers,
@@ -16,6 +16,7 @@ import {
 } from '@/store/slices/profileSlice';
 import {
   CalendarOutlined,
+  CheckCircleFilled,
   CommentOutlined,
   EditOutlined,
   EyeOutlined,
@@ -73,9 +74,10 @@ export default function ProfilePage() {
     };
   }, [dispatch, profileId]);
 
+  // ফলো স্ট্যাটাস চেক করার জন্য আলাদা ইফেক্ট
   useEffect(() => {
-    if (currentUser && !isOwnProfile && followers && followers.length > 0) {
-      const isFollow = followers.some(f => f.id === currentUser.id);
+    if (currentUser && !isOwnProfile && followers.length > 0) {
+      const isFollow = followers.some((follower: FollowUser) => follower.id === currentUser.id);
       setIsFollowing(isFollow);
     }
   }, [followers, currentUser, isOwnProfile]);
@@ -106,7 +108,7 @@ export default function ProfilePage() {
   };
 
   const loadMorePosts = () => {
-    if (posts && posts.length < totalPosts) {
+    if (posts.length < totalPosts) {
       dispatch(fetchUserPosts({ 
         userId: profileId, 
         page: currentPage.posts 
@@ -115,7 +117,7 @@ export default function ProfilePage() {
   };
 
   const loadMoreComments = () => {
-    if (comments && comments.length < totalComments) {
+    if (comments.length < totalComments) {
       dispatch(fetchUserComments({ 
         userId: profileId, 
         page: currentPage.comments
@@ -124,7 +126,7 @@ export default function ProfilePage() {
   };
 
   const loadMoreLikes = () => {
-    if (likes && likes.length < totalLikes) {
+    if (likes.length < totalLikes) {
       dispatch(fetchUserLikes({ 
         userId: profileId, 
         page: currentPage.likes
@@ -133,7 +135,7 @@ export default function ProfilePage() {
   };
 
   const loadMoreFollowers = () => {
-    if (followers && followers.length < totalFollowers) {
+    if (followers.length < totalFollowers) {
       dispatch(fetchFollowers({ 
         userId: profileId, 
         page: currentPage.followers
@@ -142,7 +144,7 @@ export default function ProfilePage() {
   };
 
   const loadMoreFollowing = () => {
-    if (following && following.length < totalFollowing) {
+    if (following.length < totalFollowing) {
       dispatch(fetchFollowing({ 
         userId: profileId, 
         page: currentPage.following
@@ -172,24 +174,17 @@ export default function ProfilePage() {
     );
   }
 
-  // সবগুলোর জন্য null চেক
-  const safePosts = posts || [];
-  const safeComments = comments || [];
-  const safeLikes = likes || [];
-  const safeFollowers = followers || [];
-  const safeFollowing = following || [];
-
   const items = [
     {
       key: 'posts',
       label: `Posts (${totalPosts})`,
       children: (
         <UserPosts 
-          posts={safePosts}
+          posts={posts} 
           userId={profileId} 
           isOwnProfile={isOwnProfile}
           onLoadMore={loadMorePosts}
-          hasMore={safePosts.length < totalPosts}
+          hasMore={posts.length < totalPosts}
         />
       ),
     },
@@ -198,9 +193,9 @@ export default function ProfilePage() {
       label: `Comments (${totalComments})`,
       children: (
         <UserComments 
-          comments={safeComments}
+          comments={comments} 
           onLoadMore={loadMoreComments}
-          hasMore={safeComments.length < totalComments}
+          hasMore={comments.length < totalComments}
         />
       ),
     },
@@ -209,9 +204,9 @@ export default function ProfilePage() {
       label: `Likes (${totalLikes})`,
       children: (
         <UserLikes 
-          likes={safeLikes}
+          likes={likes} 
           onLoadMore={loadMoreLikes}
-          hasMore={safeLikes.length < totalLikes}
+          hasMore={likes.length < totalLikes}
         />
       ),
     },
@@ -220,10 +215,10 @@ export default function ProfilePage() {
       label: `Followers (${totalFollowers})`,
       children: (
         <FollowersList 
-          followers={safeFollowers}
+          followers={followers} 
           currentUserId={currentUser?.id}
           onLoadMore={loadMoreFollowers}
-          hasMore={safeFollowers.length < totalFollowers}
+          hasMore={followers.length < totalFollowers}
         />
       ),
     },
@@ -232,10 +227,10 @@ export default function ProfilePage() {
       label: `Following (${totalFollowing})`,
       children: (
         <FollowingList 
-          following={safeFollowing}
+          following={following} 
           currentUserId={currentUser?.id}
           onLoadMore={loadMoreFollowing}
-          hasMore={safeFollowing.length < totalFollowing}
+          hasMore={following.length < totalFollowing}
         />
       ),
     },
@@ -259,10 +254,13 @@ export default function ProfilePage() {
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-black items-center mb-2">
                     {profile.name}
                     {profile.verified && (
-                      <span className="ml-2 text-blue-500 text-xl">✓</span>
+                      <CheckCircleFilled
+                        style={{ color: '#0284c7', fontSize: '24px' }} 
+                        aria-label="Verified account"
+                      />
                     )}
                   </h1>
                   
@@ -347,11 +345,12 @@ interface TabProps {
 }
 
 interface UserPostsProps extends TabProps {
-  posts: any[];
+  posts: UserPost[];
   userId: string;
   isOwnProfile: boolean;
 }
 
+// ===== ঠিক করা UserPosts কম্পোনেন্ট =====
 function UserPosts({ posts, userId, isOwnProfile, onLoadMore, hasMore }: UserPostsProps) {
   return (
     <div className="space-y-4">
@@ -375,7 +374,7 @@ function UserPosts({ posts, userId, isOwnProfile, onLoadMore, hasMore }: UserPos
                 {post.title}
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {post.excerpt || post.content?.substring(0, 150)}...
+                {post.excerpt || post.content.substring(0, 150)}...
               </p>
               <div className="flex items-center gap-4 text-sm text-gray-500">
                 <span><HeartOutlined /> {post.likes || 0}</span>
@@ -409,9 +408,10 @@ function UserPosts({ posts, userId, isOwnProfile, onLoadMore, hasMore }: UserPos
 }
 
 interface UserCommentsProps extends TabProps {
-  comments: any[];
+  comments: UserComment[];
 }
 
+// ===== ঠিক করা UserComments কম্পোনেন্ট =====
 function UserComments({ comments, onLoadMore, hasMore }: UserCommentsProps) {
   return (
     <div className="space-y-4">
@@ -454,9 +454,10 @@ function UserComments({ comments, onLoadMore, hasMore }: UserCommentsProps) {
 }
 
 interface UserLikesProps extends TabProps {
-  likes: any[];
+  likes: UserLike[];
 }
 
+// ===== ঠিক করা UserLikes কম্পোনেন্ট =====
 function UserLikes({ likes, onLoadMore, hasMore }: UserLikesProps) {
   return (
     <div className="space-y-4">
@@ -508,10 +509,11 @@ function UserLikes({ likes, onLoadMore, hasMore }: UserLikesProps) {
 }
 
 interface FollowersListProps extends TabProps {
-  followers: any[];
+  followers: FollowUser[];
   currentUserId?: string;
 }
 
+// Followers List Component (ঠিক আছে)
 function FollowersList({ followers, currentUserId, onLoadMore, hasMore }: FollowersListProps) {
   const dispatch = useAppDispatch();
 
@@ -572,10 +574,11 @@ function FollowersList({ followers, currentUserId, onLoadMore, hasMore }: Follow
 }
 
 interface FollowingListProps extends TabProps {
-  following: any[];
+  following: FollowUser[];
   currentUserId?: string;
 }
 
+// Following List Component (ঠিক আছে)
 function FollowingList({ following, currentUserId, onLoadMore, hasMore }: FollowingListProps) {
   const dispatch = useAppDispatch();
 
