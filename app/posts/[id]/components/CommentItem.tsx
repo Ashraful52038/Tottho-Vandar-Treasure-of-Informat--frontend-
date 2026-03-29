@@ -1,7 +1,7 @@
 'use client';
 
 import { Comment } from '@/types/comments';
-import { DeleteOutlined, LikeFilled, LikeOutlined, UserOutlined } from '@ant-design/icons';
+import { DeleteOutlined, UserOutlined } from '@ant-design/icons'; // LikeFilled, LikeOutlined সরানো হয়েছে
 import { Avatar, Button, List } from 'antd';
 import moment from 'moment';
 import { useState } from 'react';
@@ -10,30 +10,24 @@ interface CommentItemProps {
   comment: Comment;
   replies: Comment[];
   onReply: (comment: Comment) => void;
-  onLike: (id: string) => void;
+  // onLike সম্পূর্ণ সরানো হয়েছে
   onDelete: (id: string) => void;
   currentUser: any;
   isAuthor: boolean;
 }
 
-export const CommentItem = ({ comment, replies, onReply, onLike, onDelete, currentUser, isAuthor }: CommentItemProps) => {
+export const CommentItem = ({ 
+  comment, 
+  replies, 
+  onReply, 
+  onDelete, 
+  currentUser, 
+  isAuthor 
+}: CommentItemProps) => {
   const [showReplies, setShowReplies] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
   
   const isCommentAuthor = currentUser?.id === comment.author?.id;
   const canDelete = isCommentAuthor || isAuthor;
-
-  const handleLikeClick = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      await onLike(comment.id);
-    } catch (error) {
-      console.error('Like error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <List.Item className="border-b last:border-b-0 py-4">
@@ -45,24 +39,30 @@ export const CommentItem = ({ comment, replies, onReply, onLike, onDelete, curre
           <div className="flex items-center justify-between mb-1">
             <div>
               <span className="font-semibold">{comment.author?.name}</span>
-              <span className="text-xs text-gray-500 ml-2">{moment(comment.createdAt).fromNow()}</span>
+              <span className="text-xs text-gray-500 ml-2">
+                {moment(comment.createdAt).fromNow()}
+              </span>
             </div>
             {canDelete && (
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" onClick={() => onDelete(comment.id)} />
+              <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                size="small" 
+                onClick={() => onDelete(comment.id)} 
+              />
             )}
           </div>
           
           <p className="text-gray-800 mb-2">{comment.content}</p>
           
           <div className="flex items-center gap-4">
-            <Button type="text" size="small" disabled={isLoading}
-              icon={comment.isLiked ? <LikeFilled className="text-blue-500" /> : <LikeOutlined />}
-              onClick={handleLikeClick}>
-              {comment.likes || 0}
-            </Button>
+            {/* লাইক বাটন সরানো হয়েছে */}
             
             {currentUser && (
-              <Button type="text" size="small" onClick={() => onReply(comment)}>Reply</Button>
+              <Button type="text" size="small" onClick={() => onReply(comment)}>
+                Reply
+              </Button>
             )}
             
             {replies.length > 0 && (
@@ -74,18 +74,20 @@ export const CommentItem = ({ comment, replies, onReply, onLike, onDelete, curre
 
           {showReplies && replies.length > 0 && (
             <div className="mt-4 pl-4 border-l-2 border-gray-200">
-              <List dataSource={replies} renderItem={(reply) => (
-                <CommentItem
-                  key={reply.id}
-                  comment={reply}
-                  replies={[]}
-                  onReply={onReply}
-                  onLike={onLike}
-                  onDelete={onDelete}
-                  currentUser={currentUser}
-                  isAuthor={isAuthor}
-                />
-              )} />
+              <List 
+                dataSource={replies} 
+                renderItem={(reply) => (
+                  <CommentItem
+                    key={reply.id}
+                    comment={reply}
+                    replies={[]}
+                    onReply={onReply}
+                    onDelete={onDelete}
+                    currentUser={currentUser}
+                    isAuthor={isAuthor}
+                  />
+                )} 
+              />
             </div>
           )}
         </div>

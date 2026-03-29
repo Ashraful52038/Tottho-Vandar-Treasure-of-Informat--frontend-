@@ -145,6 +145,44 @@ const postSlice = createSlice({
         clearError: (state) => {
             state.error = null;
         },
+        updateCommentCount: (state, action: PayloadAction<{ postId: string; delta: number }>) => {
+        const { postId, delta } = action.payload;
+
+        // ফিডের পোস্ট লিস্ট – নতুন অ্যারে তৈরি করি
+        if (state.posts) {
+            state.posts = state.posts.map(post =>
+                post.id === postId
+                    ? {
+                        ...post,
+                        commentsCount: Math.max(0, (post.commentsCount || 0) + delta),
+                        comments: Math.max(0, (post.commentsCount || 0) + delta),
+                    }
+                    : post
+            );
+        }
+
+        // মাই পোস্ট লিস্ট
+        if (state.myPosts) {
+            state.myPosts = state.myPosts.map(post =>
+                post.id === postId
+                    ? {
+                        ...post,
+                        commentsCount: Math.max(0, (post.commentsCount || 0) + delta),
+                        comments: Math.max(0, (post.commentsCount || 0) + delta),
+                    }
+                    : post
+            );
+        }
+
+        // বর্তমান পোস্ট (ডিটেইল পেজে)
+        if (state.currentPost && state.currentPost.id === postId) {
+            state.currentPost = {
+                ...state.currentPost,
+                commentsCount: Math.max(0, (state.currentPost.commentsCount || 0) + delta),
+                comments: Math.max(0, (state.currentPost.commentsCount || 0) + delta),
+            };
+        }
+    }
     },
     extraReducers: (builder) => {
         builder
@@ -284,5 +322,5 @@ const postSlice = createSlice({
     },
 });
 
-export const { clearCurrentPost, setPage, clearError } = postSlice.actions;
+export const { clearCurrentPost, setPage, clearError, updateCommentCount } = postSlice.actions;
 export default postSlice.reducer;
