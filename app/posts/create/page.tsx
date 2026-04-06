@@ -94,7 +94,7 @@ export default function CreatePostPage() {
 
       let imageUrl = featuredImage;
       if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `http://localhost:8080${imageUrl}`;
+        imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${imageUrl}`;
       }
 
       // Use tagNames directly
@@ -134,7 +134,7 @@ export default function CreatePostPage() {
 
       let imageUrl = featuredImage;
       if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `http://localhost:8080${imageUrl}`;
+        imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${imageUrl}`;
       }
 
       const postData = {
@@ -164,7 +164,7 @@ export default function CreatePostPage() {
 
       let imageUrl = data.url;
         if (imageUrl && !imageUrl.startsWith('http')) {
-            imageUrl = `http://localhost:8080${imageUrl}`;
+            imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${imageUrl}`;
         }
     setFeaturedImage(imageUrl);
     message.success('Image uploaded successfully!');
