@@ -1,20 +1,23 @@
 'use client';
 
-import FeedSidebar from '@/components/feed/FeedSidebar';
 import FeedTabsContent from '@/components/feed/FeedTabs';
 import Navbar from '@/components/layout/Navbar';
-import PostCard, { normalizePost } from '@/components/posts/PostCard';
 import { FollowUser, userService } from '@/lib/api/user';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { fetchPosts, fetchTags } from '@/store/slices/postSlice';
 import { Tag as TagType } from '@/types/tags';
 import { getFullImageUrl } from '@/utils/imageUtils';
 import {
-  CloseOutlined,
-  ReloadOutlined,
+  BookOutlined,
+  CloseOutlined, // ✅ যোগ করুন
+  FireOutlined,
+  ReloadOutlined, // ✅ যোগ করুন
+  RiseOutlined, // ✅ যোগ করুন
+  UserOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { Button, Empty, Select, Space, Spin, Tag, message } from 'antd';
+import { Avatar, Button, Select, Space, Spin, Tag, message } from 'antd';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
