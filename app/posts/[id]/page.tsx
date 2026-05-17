@@ -38,7 +38,11 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+<<<<<<< HEAD
 import 'react-quill/dist/quill.snow.css';
+=======
+import { CommentItem } from './components/CommentItem';
+>>>>>>> cc2f937a (implementing notification)
 
 const ReactQuill = dynamic(
   () => import('react-quill').then((mod) => mod.default),

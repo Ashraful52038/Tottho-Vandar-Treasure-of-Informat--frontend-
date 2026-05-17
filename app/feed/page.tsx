@@ -204,6 +204,7 @@ export default function FeedPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-primary">
       <Navbar
         onSearch={handleSearch}
@@ -335,7 +336,7 @@ export default function FeedPage() {
             </div>
             
               <div className={`flex flex-wrap gap-2 transition-all duration-300 ${
-                showAllTopics ? 'max-h-[500px]' : 'max-h-[200px]'
+                showAllTopics ? 'max-h-125' : 'max-h-50'
               } overflow-y-auto pr-2`}>
                 {(showAllTopics ? tags : tags.slice(0, 8)).map((tag: TagType) => (
                   <button
@@ -453,5 +454,6 @@ export default function FeedPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

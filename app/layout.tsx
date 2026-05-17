@@ -1,3 +1,4 @@
+import { WebSocketProvider } from "@/components/notification/WebSocketContext";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -21,9 +22,11 @@ export default function RootLayout({
       <body
         className={inter.className}>
           <ReduxProvider>
+            <WebSocketProvider> 
             <AntdRegistry>
               {children}
             </AntdRegistry>
+            </WebSocketProvider>
           </ReduxProvider>
       </body>
     </html>
