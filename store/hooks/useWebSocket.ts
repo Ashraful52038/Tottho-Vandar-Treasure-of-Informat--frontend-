@@ -68,6 +68,22 @@ export function useWebSocket(userId?: string | number) {
       try {
         const data: WebSocketMessage = JSON.parse(event.data);
         console.log('📨 WebSocket message received:', data);
+
+        let notificationsEnabled = true;
+        if (typeof window !== 'undefined') {
+          const preferences = localStorage.getItem('preferences');
+          if (preferences) {
+            const parsed = JSON.parse(preferences);
+            notificationsEnabled = parsed.notificationsEnabled !== false;
+          }
+        }
+
+        if (!notificationsEnabled) {
+          console.log('🔕 Notifications disabled by user, skipping:', data.type);
+          return;
+        }
+        
+        console.log('📨 WebSocket message received:', data);
         
         // Update all components using this hook
         globalListeners.forEach(listener => listener(data));

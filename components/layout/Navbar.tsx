@@ -1,7 +1,5 @@
 'use client';
 
-import LoginModal from '@/app/(auth)/login/page';
-import SignupModal from '@/app/(auth)/signup/page';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { logout } from '@/store/slices/authSlice';
 import { Tag as TagType } from '@/types/tags';
@@ -22,6 +20,8 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Input, MenuProps, message } fr
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import LoginModal from '../auth/LoginModal';
+import SignupModal from '../auth/SignupModal';
 import { useWebSocketContext } from '../notification/WebSocketContext';
 
 interface NavbarProps {

@@ -1,10 +1,12 @@
 'use client';
 
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
-import { changePassword, forgetPassword } from '@/store/slices/authSlice';
+import { changePassword, forgetPassword, setNotificationsEnabled } from '@/store/slices/authSlice';
 import { getFullImageUrl } from '@/utils/imageUtils';
 import {
-  ArrowLeftOutlined,
+  ArrowLeftOutlined, // ✅ যোগ করুন
+  BellFilled,
+  BellOutlined,
   KeyOutlined,
   LockOutlined,
   MailOutlined,
@@ -13,7 +15,7 @@ import {
   SendOutlined,
   UserOutlined
 } from '@ant-design/icons';
-import { Avatar, message } from 'antd';
+import { Avatar, Switch, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -27,9 +29,11 @@ const faqItems = [
 ];
 
 export default function SettingsPage() {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user , preferences } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const router = useRouter();
+
+  const notificationsEnabled = preferences?.notificationsEnabled ?? true;
 
   const [activeTab, setActiveTab] = useState<'change' | 'forgot'>('change');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -69,6 +73,15 @@ export default function SettingsPage() {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  const handleNotificationToggle = (checked: boolean) => {
+  dispatch(setNotificationsEnabled(checked));
+  if (checked) {
+    message.success('Notifications enabled');
+  } else {
+    message.info('Notifications disabled');
+  }
+};
 
   const inputCls = 'w-full px-3.5 py-2.5 text-sm rounded-lg border border-[#e8e5df] outline-none focus:border-green-600 focus:ring-2 focus:ring-green-50 transition-all bg-white';
 
@@ -221,6 +234,41 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+           {/* ✅ Notification Settings Card - Add this */}
+          <div className="bg-white rounded-2xl border border-[#e8e5df] p-6">
+            <div className="flex items-center gap-2 mb-4">
+              {notificationsEnabled ? (
+                <BellFilled className="text-green-500 text-lg" />
+              ) : (
+                <BellOutlined className="text-gray-400 text-lg" />
+              )}
+              <h3 className="text-sm font-semibold text-gray-700">Notification Settings</h3>
+            </div>
+            
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Push Notifications</p>
+                <p className="text-xs text-gray-400 mt-0.5">Get real-time alerts for likes, comments & follows</p>
+              </div>
+              <Switch
+                  checked={notificationsEnabled}
+                  onChange={handleNotificationToggle}
+                  className="bg-gray-300"
+                  checkedChildren={<BellFilled />}
+                  unCheckedChildren={<BellOutlined />}
+                />
+              </div>
+              
+              {!notificationsEnabled && (
+                <div className="mt-3 pt-3 border-t border-[#e8e5df]">
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    <SafetyOutlined className="text-xs" />
+                    Notifications are paused. You won't receive any alerts.
+                  </p>
+                </div>
+              )}
+            </div>
 
           {/* Right: FAQ */}
           <div className="bg-white rounded-2xl border border-[#e8e5df] p-6">
