@@ -1,12 +1,10 @@
 'use client';
 
-import { CommentItem } from './components/CommentItem';
+import { normalizePost } from '@/components/posts/PostCard';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { addComment, deleteComment, fetchComments } from '@/store/slices/commentSlice';
 import { deletePost, fetchPostById, likePost, updateCommentCount } from '@/store/slices/postSlice';
-import { normalizePost } from '@/components/posts/PostCard';
 import { Comment } from '@/types/comments';
-import { Post } from '@/types/posts';
 import { getFullImageUrl } from '@/utils/imageUtils';
 import {
   ArrowLeftOutlined,
@@ -38,6 +36,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { CommentItem } from './components/CommentItem';
 
 const ReactQuill = dynamic(
   () => import('react-quill').then((mod) => mod.default),
@@ -264,9 +263,11 @@ export default function PostDetailPage() {
                 src={imageUrl}
                 className="w-full object-contain"
                 style={{ maxHeight: '500px' }}
-                onError={(e) => {
+                  onError={(e) => {
+                  console.error('Image load error:', imageUrl);
                   setImageError(true);
                 }}
+                onLoad={() => console.log('Image loaded:', imageUrl)}
               />
             </div>
           ) : (
@@ -282,7 +283,7 @@ export default function PostDetailPage() {
             <div className="flex items-center mb-6">
               <Avatar 
                 icon={<UserOutlined />} 
-                src={user?.avatar ? getFullImageUrl(user.avatar) : undefined}
+                src={post.author?.avatar ? getFullImageUrl(post.author.avatar) : undefined}
                 size={64}
                 className="border-2 border-green-500 shadow-md"
               >
