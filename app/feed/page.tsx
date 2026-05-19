@@ -19,11 +19,11 @@ import {
 import { Avatar, Button, Select, Space, Spin, Tag, message } from 'antd';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 const { Option } = Select;
 
-export default function FeedPage() {
+function FeedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
@@ -458,5 +458,13 @@ export default function FeedPage() {
       </div>
     </div>
     </>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FeedContent />
+    </Suspense>
   );
 }
