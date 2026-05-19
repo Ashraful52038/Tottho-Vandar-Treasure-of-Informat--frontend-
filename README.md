@@ -6,7 +6,7 @@
 [![Ant Design](https://img.shields.io/badge/Ant%20Design-6.3-1890ff?logo=ant-design)](https://ant.design/)
 [![Redux Toolkit](https://img.shields.io/badge/Redux%20Toolkit-2.11-764abc?logo=redux)](https://redux-toolkit.js.org/)
 
-**Tottho Vandar** (Bengali: তোত্থ বন্দার - \"Treasure/Source of Knowledge/Opinions\") is a modern, full-featured social content platform built with Next.js App Router. Users can create, edit, share, and discuss rich-text posts with comments, follow profiles, browse personalized feeds, manage tags, and more. Features seamless authentication, dark/light themes, responsive design, and a scalable Redux-managed state.
+**Tottho Vandar** ("Treasure/Source of Knowledge/Opinions\") is a modern, full-featured social content platform built with Next.js App Router. Users can create, edit, share, and discuss rich-text posts with comments, follow profiles, browse personalized feeds, manage tags, and more. Features seamless authentication, dark/light themes, responsive design, and a scalable Redux-managed state.
 
 ## ✨ Features
 

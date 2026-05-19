@@ -3,25 +3,39 @@
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { clearError, signup } from '@/store/slices/authSlice';
 import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, message, Typography } from "antd";
-import Link from 'next/link';
+import { Alert, Button, Form, Input, message, Modal, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect } from 'react';
 
 const { Title, Text } = Typography;
 
-export default function SignupPage() {
+interface SignupModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onLoginClick: () => void;
+}
+
+export default function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const { isLoading, error, isAuthenticated, user } = useAppSelector((state) => state.auth);
     const [form] = Form.useForm();
 
+    // Error clear when component unmounts
+    useEffect(() => {
+        if (!isOpen) {
+            dispatch(clearError());
+            form.resetFields();
+        }
+    }, [isOpen, dispatch, form]);
+
     // Redirect if already authenticated
     useEffect(() => {
         if (isAuthenticated && user) {
+            onClose();
             router.push(user.verified ? '/feed' : '/verify-email');
         }
-    }, [isAuthenticated, user, router]);
+    }, [isAuthenticated, user, router, onClose]);
 
     const onFinish = async (values: any) => {
         try {
@@ -33,6 +47,7 @@ export default function SignupPage() {
 
             // Success
             message.success('Account created! Please verify your email.');
+            onClose();
             router.push('/verify-email');
         } catch (err: any) {
             const errorMsg = typeof err === 'string' ? err : err?.message || '';
@@ -48,9 +63,15 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
-                <div className="text-center">
+            <Modal
+                title={null}
+                open={isOpen}
+                onCancel={onClose}
+                footer={null}
+                width={450}
+                centered
+            >
+                <div className="text-center mb-8">
                     <Title level={2} className="dark:text-white">Create New Account</Title>
                     <Text type="secondary" className="dark:text-gray-400">
                         Join Tottho Vandar - Treasure of Information
@@ -61,7 +82,7 @@ export default function SignupPage() {
                 {error && (
                     <Alert
                         message="Registration Failed"
-                        description={typeof error === 'string' ? error : 'Please try again'}
+                        description={typeof error === 'string' ? error : 'Please try again '}
                         type="error"
                         showIcon
                         closable
@@ -193,13 +214,15 @@ export default function SignupPage() {
                     <div className="text-center border-t border-gray-200 dark:border-gray-700 pt-4">
                         <Text type="secondary" className="dark:text-gray-400">
                             Already have an account?{' '}
-                            <Link href="/login" className="text-green-600 hover:text-green-700 dark:text-green-400 font-medium">
+                            <span
+                                onClick={onLoginClick}
+                                className="text-green-600 hover:text-green-700 dark:text-green-400 font-medium cursor-pointer"
+                            >
                                 Log In
-                            </Link>
+                            </span>
                         </Text>
                     </div>
                 </Form>
-            </div>
-        </div>
+            </Modal>
     );
 }

@@ -1,10 +1,10 @@
 'use client';
 
+import { normalizePost } from '@/components/posts/PostCard';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { addComment, deleteComment, fetchComments } from '@/store/slices/commentSlice';
 import { deletePost, fetchPostById, likePost, updateCommentCount } from '@/store/slices/postSlice';
 import { Comment } from '@/types/comments';
-import { Post } from '@/types/posts';
 import { getFullImageUrl } from '@/utils/imageUtils';
 import {
   ArrowLeftOutlined,
@@ -36,7 +36,6 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import 'react-quill/dist/quill.snow.css';
 import { CommentItem } from './components/CommentItem';
 
 const ReactQuill = dynamic(
@@ -46,56 +45,6 @@ const ReactQuill = dynamic(
     loading: () => <div className="h-32 bg-gray-100 animate-pulse rounded" />
   }
 );
-
-// Post normalize function (unchanged)
-const normalizePost = (post: any): Post => {
-  let author = post.author;
-  if (!author && post.authorId) {
-    author = {
-      id: post.authorId,
-      name: post.authorName || 'Unknown Author',
-      avatar: post.authorAvatar || null
-    };
-  } else if (!author) {
-    author = {
-      id: 'unknown',
-      name: 'Unknown Author',
-      avatar: null
-    };
-  }
-
-  let tags: string[] = [];
-  if (post.tags) {
-    tags = post.tags.map((tag: any) => {
-      if (typeof tag === 'string') return tag;
-      if (tag && typeof tag === 'object') {
-        return tag.name || tag.slug || tag.id || String(tag);
-      }
-      return String(tag);
-    });
-  }
-
-  return {
-    id: post.id || '',
-    title: post.title || '',
-    content: post.content || '',
-    excerpt: post.excerpt || '',
-    authorId: post.authorId || author.id,
-    author: author,
-    tags: tags,
-    featuredImage: post.featuredImage || post.coverImage,
-    likes: post.likes || post.likesCount || 0,
-    likesCount: post.likesCount || post.likes || 0,
-    comments: post.comments || post.commentsCount || 0,
-    commentsCount: post.commentsCount || post.comments || 0,
-    readingTime: post.readingTime || Math.ceil((post.content?.length || 0) / 1000),
-    published: post.published || post.status === 'published',
-    status: post.status || (post.published ? 'published' : 'draft'),
-    createdAt: post.createdAt || new Date().toISOString(),
-    updatedAt: post.updatedAt || post.createdAt || new Date().toISOString(),
-    isLiked: post.isLiked || false
-  };
-};
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -186,7 +135,6 @@ export default function PostDetailPage() {
         parentId: replyTo?.id
       })).unwrap();
 
-      message.success('Comment added successfully');
       setCommentText('');
       setReplyTo(null);
       dispatch(updateCommentCount({ postId: params.id as string, delta: 1 }));
@@ -315,9 +263,11 @@ export default function PostDetailPage() {
                 src={imageUrl}
                 className="w-full object-contain"
                 style={{ maxHeight: '500px' }}
-                onError={(e) => {
+                  onError={(e) => {
+                  console.error('Image load error:', imageUrl);
                   setImageError(true);
                 }}
+                onLoad={() => console.log('Image loaded:', imageUrl)}
               />
             </div>
           ) : (
@@ -333,7 +283,7 @@ export default function PostDetailPage() {
             <div className="flex items-center mb-6">
               <Avatar 
                 icon={<UserOutlined />} 
-                src={post.author?.avatar}
+                src={post.author?.avatar ? getFullImageUrl(post.author.avatar) : undefined}
                 size={64}
                 className="border-2 border-green-500 shadow-md"
               >
@@ -435,7 +385,7 @@ export default function PostDetailPage() {
               )}
               <div className="flex gap-3">
                 <Avatar 
-                  src={user.avatar} 
+                  src={getFullImageUrl(user.avatar)} 
                   icon={<UserOutlined />}
                   size={40}
                 >

@@ -136,10 +136,8 @@ export const followUser = createAsyncThunk(
   async (userId: string, { rejectWithValue }) => {
     try {
       const response = await userService.followUser(userId);
-      message.success('User followed successfully');
       return { userId, ...response };
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to follow user');
       return rejectWithValue(error.response?.data?.message || 'Failed to follow user');
     }
   }
@@ -151,7 +149,6 @@ export const unfollowUser = createAsyncThunk(
   async (userId: string, { rejectWithValue }) => {
     try {
       const response = await userService.unfollowUser(userId);
-      message.success('User unfollowed successfully');
       return { userId, ...response };
     } catch (error: any) {
       message.error(error.response?.data?.message || 'Failed to unfollow user');
@@ -202,6 +199,8 @@ const profileSlice = createSlice({
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.profile = action.payload;
+        state.totalFollowers = action.payload.stats?.followers ?? 0;
+        state.totalFollowing = action.payload.stats?.following ?? 0;
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.isLoading = false;
@@ -299,11 +298,19 @@ const profileSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(followUser.fulfilled, (state, action) => {
-        if (state.profile && state.profile.id === action.payload.userId) {
-          if (state.profile.stats) {
-            state.profile.stats.followers += 1;
-          }
+        const targetUserId = action.payload.userId;
+        const currentProfileId = state.profile?.id;
+        // কেস 1: অন্য কেউ প্রোফাইল মালিককে ফলো করলে (totalFollowers বাড়বে)
+        if (currentProfileId === targetUserId) {
+        if (state.profile?.stats) state.profile.stats.followers += 1;
+          state.totalFollowers += 1;
         }
+        // কেস 2: প্রোফাইল মালিক অন্য কাউকে ফলো করলে (totalFollowing বাড়বে)
+        else if (currentProfileId && currentProfileId !== targetUserId) {
+          if (state.profile?.stats) state.profile.stats.following += 1;
+          state.totalFollowing += 1;
+        }
+
         state.followers = state.followers.map(f => 
           f.id === action.payload.userId ? { ...f, isFollowing: true } : f
         );
@@ -312,10 +319,16 @@ const profileSlice = createSlice({
         );
       })
       .addCase(unfollowUser.fulfilled, (state, action) => {
-        if (state.profile && state.profile.id === action.payload.userId) {
-          if (state.profile.stats) {
-            state.profile.stats.followers = Math.max(0, state.profile.stats.followers - 1);
-          }
+          const targetUserId = action.payload.userId;
+          const currentProfileId = state.profile?.id;
+
+        if (currentProfileId === targetUserId) {
+          if (state.profile?.stats) state.profile.stats.followers = Math.max(0, state.profile.stats.followers - 1);
+          state.totalFollowers = Math.max(0, state.totalFollowers - 1);
+
+        } else if (currentProfileId && currentProfileId !== targetUserId) {
+          if (state.profile?.stats) state.profile.stats.following = Math.max(0, state.profile.stats.following - 1);
+          state.totalFollowing = Math.max(0, state.totalFollowing - 1);
         }
         state.followers = state.followers.map(f => 
           f.id === action.payload.userId ? { ...f, isFollowing: false } : f

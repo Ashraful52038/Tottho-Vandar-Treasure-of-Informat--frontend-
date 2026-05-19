@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
             message.success('Password reset email sent. Please check your inbox.');
             form.resetFields();
         } catch (error: any) {
-            console.error(error);
+            // Error handled by Redux state
         } finally {
             setLoading(false);
         }

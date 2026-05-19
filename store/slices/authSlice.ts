@@ -9,6 +9,9 @@ export interface AuthState {
     isLoading: boolean;
     isAuthenticated: boolean;
     error: string | null;
+    preferences: {                    
+        notificationsEnabled: boolean;
+    };
 }
 
 // Define response types based on your actual API responses
@@ -23,7 +26,10 @@ const initialAuthState: AuthState = {
     token: null,
     isLoading: false,
     error: null,
-    isAuthenticated: false
+    isAuthenticated: false,
+    preferences: {                   
+        notificationsEnabled: true,
+    },
 };
 
 const loadState = (): AuthState => {
@@ -34,6 +40,12 @@ const loadState = (): AuthState => {
         
         const token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
+        const preferencesStr = localStorage.getItem('preferences');
+
+        let preferences = { notificationsEnabled: true };
+        if (preferencesStr) {
+            preferences = JSON.parse(preferencesStr);
+        }
         
         if (token && userStr) {
             const user = JSON.parse(userStr);
@@ -42,7 +54,8 @@ const loadState = (): AuthState => {
                 token,
                 isLoading: false,
                 error: null,
-                isAuthenticated: true
+                isAuthenticated: true,
+                preferences
             };
         }
     } catch (error) {
@@ -174,8 +187,10 @@ const authSlice = createSlice({
             state.user = null;
             state.token = null;
             state.isAuthenticated = false;
+            state.preferences = { notificationsEnabled: true };
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            localStorage.removeItem('preferences');
             message.success('Logged out successfully');
         },
         clearError: (state) => {
@@ -187,6 +202,10 @@ const authSlice = createSlice({
                 localStorage.setItem('user', JSON.stringify(state.user));
             }
         },
+        setNotificationsEnabled: (state, action: PayloadAction<boolean>) => {
+            state.preferences.notificationsEnabled = action.payload;
+            localStorage.setItem('preferences', JSON.stringify(state.preferences));
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -197,8 +216,7 @@ const authSlice = createSlice({
             })
             .addCase(login.fulfilled, (state, action: PayloadAction<any>) => {
                 state.isLoading = false;
-                console.log('Login payload:', action.payload);
-            
+
                 if (isAuthResponse(action.payload)) {
                     state.isAuthenticated = true;
                     state.user = action.payload.user;
@@ -324,5 +342,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { logout, clearError, updateUser } = authSlice.actions;
+export const { logout, clearError, updateUser, setNotificationsEnabled } = authSlice.actions;
 export default authSlice.reducer;

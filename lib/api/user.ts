@@ -47,6 +47,7 @@ export interface FollowUser {
     avatar?: string;
     bio?: string;
     isFollowing: boolean;
+    followersCount?: number;
 }
 
 export const userService = {
@@ -100,6 +101,11 @@ export const userService = {
         return response.data;
     },
 
+    getMostFollowedUsers: async (limit: number = 5): Promise<FollowUser[]> => {
+    const response = await axiosInstance.get(`/users/most-followed?limit=${limit}`);
+    return response.data;
+    },
+
     followUser: async (userId: string): Promise<{message: string}> => {
         const response = await axiosInstance.post(`/users/${userId}/follow`);
         return response.data;
@@ -116,11 +122,13 @@ export const userService = {
     },
 
     uploadAvatar: async (file: File): Promise<{avatarUrl: string}> => {
-        const formData = new FormData();
-        formData.append('avatar', file);
-        const response = await axiosInstance.post('/user/avatar', formData, {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await axiosInstance.post('/upload/avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return response.data;
-    },
+    });
+    
+    console.log('Server response:', response.data);
+    return response.data;
+},
 };

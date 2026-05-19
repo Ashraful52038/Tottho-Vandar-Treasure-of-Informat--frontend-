@@ -1,30 +1,18 @@
 'use client';
 
+import PostEditor from '@/components/posts/PostEditor';
 import { postService } from '@/lib/api/posts';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { createPost, fetchTags } from '@/store/slices/postSlice';
-import {
-  ArrowLeftOutlined,
-  PlusOutlined
-} from '@ant-design/icons';
-import {
-  Button,
-  Form,
-  Input,
-  message,
-  Select,
-  Space,
-  Spin,
-  Upload
-} from 'antd';
+import { ArrowLeftOutlined, CameraOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
+import { Select, Spin, Upload, message } from 'antd';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import 'react-quill/dist/quill.snow.css';
+
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-const { Option } = Select;
 
 const modules = {
   toolbar: [
@@ -34,7 +22,7 @@ const modules = {
     [{ indent: '-1' }, { indent: '+1' }],
     [{ align: [] }],
     ['link', 'image', 'video'],
-    ['clean']
+    ['clean'],
   ],
 };
 
@@ -43,289 +31,231 @@ export default function CreatePostPage() {
   const dispatch = useAppDispatch();
   const { isLoading, tags: storeTags } = useAppSelector((state) => state.posts);
   const { user } = useAppSelector((state) => state.auth);
-  const [form] = Form.useForm();
+
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [featuredImage, setFeaturedImage] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [featuredImage, setFeaturedImage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [availableTags, setAvailableTags] = useState<any[]>([]);
   const [isMounted, setIsMounted] = useState(false);
+  const [titleError, setTitleError] = useState('');
+  const [tagError, setTagError] = useState('');
+
   
-
+  useEffect(() => { setIsMounted(true); }, []);
+  useEffect(() => { if (user) dispatch(fetchTags()); }, [dispatch, user]);
+  useEffect(() => { if (storeTags?.length > 0) setAvailableTags(storeTags); }, [storeTags]);
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      dispatch(fetchTags());
-    }
-  }, [dispatch, user]);
-
-  useEffect(() => {
-    if (storeTags && storeTags.length > 0) {
-      setAvailableTags(storeTags);
-    }
-  }, [storeTags]);
-
-  useEffect(() => {
-    if (!user) {
-      router.push('/login?redirect=/posts/create');
-      return;
-    }
-    if (user && !user.verified) {
-      router.push('/verify-email');
-      return;
-    }
+    if (!user) { router.push('/login?redirect=/posts/create'); return; }
+    if (user && !user.verified) { router.push('/verify-email'); return; }
   }, [user, router]);
 
+  const validate = () => {
+    let ok = true;
+    if (!title || title.trim().length < 10) { setTitleError('Title must be at least 10 characters'); ok = false; }
+    else setTitleError('');
+    if (!content || content === '<p><br></p>') { message.warning('Please write some content'); ok = false; }
+    if (selectedTags.length === 0) { setTagError('Please select at least one tag'); ok = false; }
+    else setTagError('');
+    return ok;
+  };
+
+  const buildPayload = (published: boolean) => {
+    let imageUrl = featuredImage;
+    if (imageUrl && !imageUrl.startsWith('http')) imageUrl = `http://localhost:8080${imageUrl}`;
+    return { title, content, tagNames: selectedTags, featuredImage: imageUrl, published };
+  };
+
   const handleSaveDraft = async () => {
+    if (!content || content === '<p><br></p>') { message.warning('Please write some content'); return; }
+    if (selectedTags.length === 0) { setTagError('Please select at least one tag'); return; }
     try {
-      const values = form.getFieldsValue();
-      
-      if (!content || content === '<p><br></p>') {
-        message.warning('Please write some content');
-        return;
-      }
-
-      if (!values.tags || values.tags.length === 0) {
-        message.warning('Please add at least one tag');
-        return;
-      }
-
-      let imageUrl = featuredImage;
-      if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `http://localhost:8080${imageUrl}`;
-      }
-
-      // Use tagNames directly
-      const tagNames = values.tags;
-
-      await dispatch(createPost({
-        title: values.title,
-        content: content,
-        tagNames: tagNames,
-        featuredImage: imageUrl,
-        published: false,
-      })).unwrap();
-
-      message.success('Post saved as draft!');
+      await dispatch(createPost(buildPayload(false))).unwrap();
+      message.success('Saved as draft!');
       router.push('/feed');
-    } catch (error: any) {
-      message.error(error?.response?.data?.error || 'Failed to save draft');
-    }
+    } catch (e: any) { message.error(e?.response?.data?.error || 'Failed to save draft'); }
   };
 
   const handlePublish = async () => {
+    if (!validate()) return;
     try {
-      const values = form.getFieldsValue();
-      
-      const hasContent = content && content.trim() !== '' && content !== '<p><br></p>';
-      if (!hasContent) {
-        message.warning('Please write some content');
-        return;
-      }
-
-      if (!values.tags || values.tags.length === 0) {
-        message.warning('Please add at least one tag');
-        return;
-      }
-
-      const tagNames = values.tags;
-
-      let imageUrl = featuredImage;
-      if (imageUrl && !imageUrl.startsWith('http')) {
-        imageUrl = `http://localhost:8080${imageUrl}`;
-      }
-
-      const postData = {
-        title: values.title,
-        content: content,
-        tagNames: tagNames,
-        featuredImage: imageUrl,
-        published: true,
-      };
-
-      await dispatch(createPost(postData)).unwrap();
-
-      message.success('Post published successfully!');
+      await dispatch(createPost(buildPayload(true))).unwrap();
+      message.success('Post published!');
       router.push('/feed');
-    } catch (error: any) {
-      console.error('Publish error:', error);
-      message.error(error?.response?.data?.error || 'Failed to publish post');
-    }
+    } catch (e: any) { message.error(e?.response?.data?.error || 'Failed to publish'); }
   };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     try {
       const data = await postService.uploadImage(file);
-      const formData = new FormData();
-      formData.append('image', file);
-
       let imageUrl = data.url;
-        if (imageUrl && !imageUrl.startsWith('http')) {
-            imageUrl = `http://localhost:8080${imageUrl}`;
-        }
-    setFeaturedImage(imageUrl);
-    message.success('Image uploaded successfully!');
-    } catch (error) {
-      message.error('Failed to upload image');
-    } finally {
-      setUploading(false);
-    }
+      if (imageUrl && !imageUrl.startsWith('http')) imageUrl = `http://localhost:8080${imageUrl}`;
+      setFeaturedImage(imageUrl);
+      message.success('Image uploaded!');
+    } catch { message.error('Failed to upload image'); }
+    finally { setUploading(false); }
     return false;
   };
 
-  if (!isMounted || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spin size="large" />
-      </div>
-    );
-  }
+  if (!isMounted || !user) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#f5f4f0]">
+      <LoadingOutlined className="text-4xl text-green-700" spin />
+    </div>
+  );
 
-  if (availableTags.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spin size="large" tip="Loading tags..." />
-      </div>
-    );
-  }
+  if (availableTags.length === 0) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#f5f4f0]">
+      <Spin indicator={<LoadingOutlined className="text-green-700" spin />} tip="Loading..." />
+    </div>
+  );
+
+  const inputCls = 'w-full px-3.5 py-2.5 text-sm rounded-lg border border-[#e8e5df] outline-none focus:border-green-600 focus:ring-2 focus:ring-green-50 transition-all bg-white';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/feed" className="text-gray-600 hover:text-gray-900">
-                <ArrowLeftOutlined className="text-xl" />
-              </Link>
-              <h1 className="text-2xl font-serif font-bold text-gray-900">
-                Write a Story
-              </h1>
-            </div>
-            <Space>
-              <Button onClick={handleSaveDraft} disabled={isLoading}>
-                Save Draft
-              </Button>
-              <Button
-                type="primary"
-                onClick={handlePublish}
-                loading={isLoading}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Publish
-              </Button>
-            </Space>
+    <>
+    <div className="min-h-screen bg-[#f5f4f0]">
+
+      {/* Sticky top bar */}
+      <div className="sticky top-0 z-20 bg-white border-b border-[#e8e5df]">
+        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/feed" className="w-8 h-8 flex items-center justify-center rounded-lg text-[#7a7570] hover:bg-[#f5f4f0] hover:text-[#1a1917] transition-colors">
+              <ArrowLeftOutlined />
+            </Link>
+            <h1 className="text-base font-semibold text-[#1a1917]" style={{ fontFamily: 'DM Serif Display, Georgia, serif' }}>
+              Write a Story
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSaveDraft}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium border border-[#d4cfc5] bg-white text-[#1a1917] rounded-lg hover:bg-[#f5f4f0] disabled:opacity-50 transition-colors"
+            >
+              Save Draft
+            </button>
+            <button
+              onClick={handlePublish}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-60 transition-colors"
+            >
+              {isLoading && <LoadingOutlined />}
+              {isLoading ? 'Publishing...' : 'Publish'}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handlePublish}
-          className="space-y-6"
-        >
-          <Form.Item
-            name="title"
-            rules={[
-              { required: true, message: 'Please enter a title' },
-              { min: 10, message: 'Title must be at least 10 characters' }
-            ]}
-          >
-            <Input
-              size="large"
-              placeholder="Title"
-              className="text-4xl font-serif border-0 border-b rounded-none px-0 focus:shadow-none"
-              bordered={false}
-            />
-          </Form.Item>
+      <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-5">
 
-          <div className="bg-white rounded-lg p-6">
-            <h3 className="text-lg font-medium mb-4">Featured Image</h3>
+        {/* Title */}
+        <div className="bg-white rounded-2xl border border-[#e8e5df] px-7 py-6">
+          <label className="block text-xs font-medium text-[#7a7570] mb-2 uppercase tracking-wide">Title</label>
+          <input
+            value={title}
+            onChange={e => { setTitle(e.target.value); setTitleError(''); }}
+            placeholder="Give your story a compelling title..."
+            className={`w-full text-2xl font-semibold text-[#1a1917] placeholder-[#c8c4bc] outline-none bg-transparent border-none resize-none`}
+            style={{ fontFamily: 'DM Serif Display, Georgia, serif' }}
+          />
+          {titleError && <p className="text-xs text-red-500 mt-2">{titleError}</p>}
+        </div>
+
+        {/* Featured Image */}
+        <div className="bg-white rounded-2xl border border-[#e8e5df] px-7 py-6">
+          <label className="block text-xs font-medium text-[#7a7570] mb-4 uppercase tracking-wide">Featured Image</label>
+
+          {featuredImage ? (
+            <div className="relative group rounded-xl overflow-hidden border border-[#e8e5df]">
+              <img src={featuredImage} alt="featured" className="w-full max-h-64 object-cover" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Upload showUploadList={false} beforeUpload={handleImageUpload} accept="image/*"
+                  customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.('ok'), 0)}>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-sm font-medium text-[#1a1917]">
+                    <CameraOutlined /> Change Image
+                  </button>
+                </Upload>
+              </div>
+            </div>
+          ) : (
             <Upload
-              name="image"
-              listType="picture-card"
-              className="avatar-uploader"
               showUploadList={false}
               beforeUpload={handleImageUpload}
-              customRequest={({ onSuccess }) => {
-                setTimeout(() => onSuccess?.('ok'), 0);
-              }}
+              accept="image/*"
+              customRequest={({ onSuccess }) => setTimeout(() => onSuccess?.('ok'), 0)}
             >
-              {featuredImage ? (
-                <div className="relative group">
-                  <img 
-                    src={featuredImage} 
-                    alt="featured" 
-                    className="w-full h-full object-cover rounded-lg"
-                    style={{ maxWidth: '200px', maxHeight: '200px' }}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                    <p className="text-white text-sm">Click to change</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center">
-                  <PlusOutlined className="text-2xl" />
-                  <div style={{ marginTop: 8 }}>Upload Image</div>
-                </div>
-              )}
+              <div className="flex flex-col items-center justify-center gap-3 py-10 border-2 border-dashed border-[#d4cfc5] rounded-xl cursor-pointer hover:border-green-600 hover:bg-green-50 transition-all">
+                {uploading
+                  ? <LoadingOutlined className="text-2xl text-green-700" spin />
+                  : <PlusOutlined className="text-2xl text-[#7a7570]" />
+                }
+                <p className="text-sm text-[#7a7570]">{uploading ? 'Uploading...' : 'Click to upload a featured image'}</p>
+              </div>
             </Upload>
-            {uploading && <Spin className="ml-4" />}
-            {featuredImage && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">Preview:</p>
-              <img 
-                src={featuredImage} 
-                alt="preview" 
-                className="max-w-full max-h-75 object-contain border rounded-lg"
-              />
-            </div>
           )}
-          </div>
+        </div>
 
-          <div className="bg-white rounded-lg p-6">
-            <h3 className="text-lg font-medium mb-4">Content</h3>
-            <ReactQuill
-              theme="snow"
-              value={content}
-              onChange={setContent}
-              modules={modules}
-              placeholder="Write your story here..."
-              className="min-h-100"
-            />
-          </div>
-            {/* Tags */}
-          <div className="bg-white rounded-lg p-6">
-            <h3 className="text-lg font-medium mb-4">Tags</h3>
-            <Form.Item
-              name="tags"
-              rules={[
-                { required: true, message: 'Please select at least one tag' }
-              ]}
-            >
-              <Select
-                mode="multiple"
-                placeholder="Select tags for your post"
-                className="w-full"
-              >
-                {availableTags.map(tag => (
-                  <Option key={tag.id} value={tag.name}>
-                    {tag.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <p className="text-sm text-gray-500 mt-2">
-              Add up to 5 tags to help readers find your story
-            </p>
-          </div>
-        </Form>
+        {/* Content */}
+        <div className="bg-white rounded-2xl border border-[#e8e5df] px-7 py-6">
+          <label className="block text-xs font-medium text-[#7a7570] mb-4 uppercase tracking-wide">Content</label>
+          <style>{`
+            .ql-toolbar { border-radius: 10px 10px 0 0 !important; border-color: #e8e5df !important; background: #faf9f7; }
+            .ql-container { border-radius: 0 0 10px 10px !important; border-color: #e8e5df !important; font-size: 15px; min-height: 280px; }
+            .ql-editor { min-height: 260px; line-height: 1.75; color: #1a1917; }
+            .ql-editor.ql-blank::before { color: #c8c4bc; font-style: normal; }
+          `}</style>
+          <ReactQuill
+            theme="snow"
+            value={content}
+            onChange={setContent}
+            modules={modules}
+            placeholder="Write your story here..."
+          />
+        </div>
+
+        {/* Tags */}
+        <div className="bg-white rounded-2xl border border-[#e8e5df] px-7 py-6">
+          <label className="block text-xs font-medium text-[#7a7570] mb-1.5 uppercase tracking-wide">Tags</label>
+          <p className="text-xs text-[#7a7570] mb-3">Add up to 5 tags to help readers find your story</p>
+          <Select
+            mode="multiple"
+            placeholder="Select tags..."
+            value={selectedTags}
+            onChange={v => { setSelectedTags(v); setTagError(''); }}
+            className="w-full"
+            maxCount={5}
+            style={{ width: '100%' }}
+          >
+            {availableTags.map(tag => (
+              <Select.Option key={tag.id} value={tag.name}>{tag.name}</Select.Option>
+            ))}
+          </Select>
+          {tagError && <p className="text-xs text-red-500 mt-1.5">{tagError}</p>}
+        </div>
+
+        {/* Bottom actions */}
+        <div className="flex justify-end gap-3 pb-8">
+          <button
+            onClick={handleSaveDraft}
+            disabled={isLoading}
+            className="px-5 py-2.5 text-sm font-medium border border-[#d4cfc5] bg-white text-[#1a1917] rounded-lg hover:bg-[#f5f4f0] disabled:opacity-50 transition-colors"
+          >
+            Save Draft
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-60 transition-colors"
+          >
+            {isLoading && <LoadingOutlined />}
+            {isLoading ? 'Publishing...' : 'Publish Post'}
+          </button>
+        </div>
+
       </div>
     </div>
+    </>
   );
 }

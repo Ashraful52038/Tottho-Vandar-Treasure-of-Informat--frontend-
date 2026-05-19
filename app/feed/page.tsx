@@ -1,36 +1,29 @@
 'use client';
 
+import FeedTabsContent from '@/components/feed/FeedTabs';
 import Navbar from '@/components/layout/Navbar';
-import PostCard, { normalizePost } from '@/components/posts/PostCard';
-import { userService } from '@/lib/api/user';
+import { FollowUser, userService } from '@/lib/api/user';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { fetchPosts, fetchTags } from '@/store/slices/postSlice';
 import { Tag as TagType } from '@/types/tags';
+import { getFullImageUrl } from '@/utils/imageUtils';
 import {
   BookOutlined,
-  ClockCircleOutlined,
-  CloseOutlined,
+  CloseOutlined, // ✅ যোগ করুন
   FireOutlined,
-  ReloadOutlined,
-  RiseOutlined,
+  ReloadOutlined, // ✅ যোগ করুন
+  RiseOutlined, // ✅ যোগ করুন
   UserOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { Avatar, Button, Empty, Select, Space, Spin, Tabs, Tag, message } from 'antd';
+import { Avatar, Button, Select, Space, Spin, Tag, message } from 'antd';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 const { Option } = Select;
 
-const FEATURED_AUTHORS = [
-  { id: 1, name: 'Sarah Johnson', role: 'Tech Lead at Google', followers: '12.5K' },
-  { id: 2, name: 'Michael Chen', role: 'AI Researcher', followers: '8.2K' },
-  { id: 3, name: 'Emma Wilson', role: 'Startup Founder', followers: '15K' },
-  { id: 4, name: 'David Kumar', role: 'Cloud Architect', followers: '6.8K' },
-];
-
-export default function FeedPage() {
+function FeedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
@@ -43,12 +36,15 @@ export default function FeedPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showAllTopics, setShowAllTopics] = useState(false);
 
   // State for liked posts (trending tab)
   const [likedPosts, setLikedPosts] = useState<any[]>([]);
   const [likedLoading, setLikedLoading] = useState(false);
   const [likedPage, setLikedPage] = useState(1);
   const [likedHasMore, setLikedHasMore] = useState(false);
+  const [featuredWriters, setFeaturedWriters] = useState<FollowUser[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -111,34 +107,6 @@ export default function FeedPage() {
     }
   }, [dispatch, retryCount, selectedTagIds, searchQuery, isMounted, isInitialized]);
 
-  // Fetch liked posts when needed (triggered by tab change)
-  const loadLikedPosts = async (pageNum: number = 1) => {
-    if (!user) return;
-    setLikedLoading(true);
-    try {
-      const response = await userService.getUserLikes(user.id, pageNum, 10);
-      // Extract the actual post from each like object
-      const newLikedPosts = response.likes
-      .map((like: any) => like.post)
-      .filter(Boolean)
-      .map((post: any) => normalizePost(post));
-      
-      setLikedPosts(prev => pageNum === 1 ? newLikedPosts : [...prev, ...newLikedPosts]);
-      setLikedHasMore((pageNum * 10) < (response.total || 0));
-      setLikedPage(pageNum);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to load liked posts');
-    } finally {
-      setLikedLoading(false);
-    }
-  };
-
-  const loadMoreLikedPosts = () => {
-    if (!likedLoading && likedHasMore) {
-      loadLikedPosts(likedPage + 1);
-    }
-  };
-
   const loadPosts = async () => {
     try {
       const tagIdsParam = selectedTagIds.length ? selectedTagIds.join(',') : undefined;
@@ -150,7 +118,6 @@ export default function FeedPage() {
         sortBy: 'latest'
       })).unwrap();
     } catch (err) {
-      console.error('Failed to load posts:', err);
       message.error('Failed to load posts. Please try again.');
     }
   };
@@ -166,6 +133,24 @@ export default function FeedPage() {
     const newUrl = `/feed?${params.toString()}`;
     router.push(newUrl, { scroll: false });
   };
+
+  const fetchFeaturedWriters = async () => {
+    setFeaturedLoading(true);
+    try {
+        const writers = await userService.getMostFollowedUsers(5);
+        setFeaturedWriters(writers);
+    } catch (error) {
+        console.error('Failed to load featured writers:', error);
+    } finally {
+        setFeaturedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isMounted) {
+        fetchFeaturedWriters();
+    }
+}, [isMounted]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -190,9 +175,6 @@ export default function FeedPage() {
     if (!user) {
       message.warning('Please login to write a post');
       router.push('/login?redirect=/posts/create');
-    } else if (!user.verified) {
-      message.warning('Please verify your email before posting');
-      router.push('/verify-email');
     } else {
       router.push('/posts/create');
     }
@@ -200,13 +182,6 @@ export default function FeedPage() {
 
   const handleLogin = () => {
     router.push('/login?redirect=/feed');
-  };
-
-  // Tab switching handler
-  const handleTabChange = (activeKey: string) => {
-    if (activeKey === 'trending' && user && likedPosts.length === 0 && !likedLoading) {
-      loadLikedPosts(1);
-    }
   };
 
   if (!isMounted) {
@@ -232,6 +207,7 @@ export default function FeedPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-primary">
       <Navbar
         onSearch={handleSearch}
@@ -332,156 +308,46 @@ export default function FeedPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 px-4">
           <div className="lg:col-span-8">
-            <Tabs
-              defaultActiveKey="for-you"
-              className="mb-4 sm:mb-6"
-              size={isMobile ? 'small' : 'middle'}
-              onChange={handleTabChange}
-              items={[
-                {
-                  key: 'for-you',
-                  label: (
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <FireOutlined /> <span className="hidden xs:inline">For you</span>
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-6 sm:space-y-9">
-                      {posts.length > 0 ? (
-                        posts.map((post) => <PostCard key={post.id} post={post} />)
-                      ) : (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={
-                            <div className="text-center py-8 sm:py-12">
-                              <h3 className="text-base sm:text-lg font-medium heading-color mb-2">
-                                No stories found
-                              </h3>
-                              <p className="paragraph-color text-sm sm:text-base mb-4 px-4">
-                                {searchQuery || selectedTagIds.length > 0
-                                  ? "Try adjusting your search or filter to find what you're looking for."
-                                  : "Be the first to write a story!"}
-                              </p>
-                              {user ? (
-                                <Button
-                                  type="primary"
-                                  onClick={handleWritePost}
-                                  className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                                  size={isMobile ? 'middle' : 'large'}
-                                >
-                                  Write a story
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="primary"
-                                  onClick={handleLogin}
-                                  className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                                  size={isMobile ? 'middle' : 'large'}
-                                >
-                                  Login to write
-                                </Button>
-                              )}
-                            </div>
-                          }
-                        />
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'trending',
-                  label: (
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <RiseOutlined /> <span className="hidden xs:inline">Trending</span>
-                    </span>
-                  ),
-                  children: (
-                    <div className="space-y-6 sm:space-y-9">
-                      {!user ? (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={
-                            <div className="text-center py-8 sm:py-12">
-                              <p className="paragraph-color text-sm sm:text-base mb-4">
-                                Login to see the posts you've liked.
-                              </p>
-                              <Button
-                                type="primary"
-                                onClick={handleLogin}
-                                className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                              >
-                                Login
-                              </Button>
-                            </div>
-                          }
-                        />
-                      ) : likedLoading && likedPosts.length === 0 ? (
-                        <div className="flex justify-center py-12">
-                          <Spin size="large" />
-                        </div>
-                      ) : likedPosts.length > 0 ? (
-                        <>
-                          {likedPosts.map((post) => (
-                            <PostCard key={post.id} post={post} />
-                          ))}
-                          {likedHasMore && (
-                            <div className="text-center mt-8">
-                              <Button onClick={loadMoreLikedPosts} loading={likedLoading}>
-                                Load More
-                              </Button>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={
-                            <div className="text-center py-8 sm:py-12">
-                              <p className="paragraph-color text-sm sm:text-base mb-4">
-                                You haven't liked any posts yet.
-                              </p>
-                              <Button
-                                type="primary"
-                                onClick={() => router.push('/feed')}
-                                className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                              >
-                                Explore Posts
-                              </Button>
-                            </div>
-                          }
-                        />
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'latest',
-                  label: (
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <ClockCircleOutlined /> <span className="hidden xs:inline">Latest</span>
-                    </span>
-                  ),
-                  children: <Empty description={<span className="text-secondary text-sm sm:text-base">Latest posts coming soon</span>} />,
-                },
-              ]}
+            <FeedTabsContent
+              posts={posts}
+              user={user}
+              isMobile={isMobile}
+              onLogin={handleLogin}
+              onWritePost={handleWritePost}
+              hasSearchFilters={searchQuery !== '' || selectedTagIds.length > 0}
             />
           </div>
 
           {/* Right sidebar */}
           <div className="hidden lg:block lg:col-span-4">
             <div className="card-bg rounded-lg shadow-sm p-5 lg:p-6 mb-6 transition-colors duration-300">
-              <h2 className="text-base lg:text-lg font-semibold heading-color mb-3 lg:mb-4 flex items-center gap-2">
+            <div className="flex items-center justify-between mb-3 lg:mb-4">
+              <h2 className="text-base lg:text-lg font-semibold heading-color flex items-center gap-2">
                 <FireOutlined className="text-green-600 dark:text-green-400" />
                 Recommended topics
               </h2>
-              <div className="flex flex-wrap gap-2">
-                {tags.slice(0, 12).map((tag: TagType) => (
+              {tags.length > 8 && (
+                <Button
+                  type="link"
+                  onClick={() => setShowAllTopics(!showAllTopics)}
+                  icon={showAllTopics ? <CloseOutlined /> : <RiseOutlined />}
+                  className="text-green-600 dark:text-green-400 p-0 h-auto"
+                >
+                  {showAllTopics ? 'Show less' : `See more (${tags.length - 8})`}
+                </Button>
+              )}
+            </div>
+            
+              <div className={`flex flex-wrap gap-2 transition-all duration-300 ${
+                showAllTopics ? 'max-h-125' : 'max-h-50'
+              } overflow-y-auto pr-2`}>
+                {(showAllTopics ? tags : tags.slice(0, 8)).map((tag: TagType) => (
                   <button
                     key={tag.id}
                     onClick={() => toggleTag(tag.id)}
-                    className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-colors
+                    className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-all duration-200 hover:scale-105
                       ${selectedTagIds.includes(tag.id)
-                        ? 'bg-green-600 text-white dark:bg-green-700'
+                        ? 'bg-green-600 text-white dark:bg-green-700 shadow-md'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                       }`}
                   >
@@ -489,40 +355,89 @@ export default function FeedPage() {
                   </button>
                 ))}
               </div>
+              
+              {/* Scroll করার ইঙ্গিত (শুধু মাত্র 8টির বেশি থাকলে এবং showAllTopics false হলে) */}
+              {!showAllTopics && tags.length > 8 && (
+                <div className="mt-2 text-center">
+                  <p className="text-xs text-secondary">
+                    + {tags.length - 8} more topics. Click "See more" to view all
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="card-bg rounded-lg shadow-sm p-5 lg:p-6 mb-6 transition-colors duration-300">
-              <h2 className="text-base lg:text-lg font-semibold heading-color mb-3 lg:mb-4 flex items-center gap-2">
+            <h2 className="text-base lg:text-lg font-semibold heading-color mb-3 lg:mb-4 flex items-center gap-2">
                 <UserOutlined className="text-blue-600 dark:text-blue-400" />
-                Featured writers
-              </h2>
-              <div className="space-y-3 lg:space-y-4">
-                {FEATURED_AUTHORS.map(author => (
-                  <div key={author.id} className="flex items-start gap-2 lg:gap-3">
-                    <Avatar size={40} icon={<UserOutlined />} className="shrink-0 border-2 border-custom" />
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/profile/${author.id}`} className="font-medium heading-color hover:text-green-600 dark:hover:text-green-400 transition-colors block truncate text-sm lg:text-base">
-                        {author.name}
-                      </Link>
-                      <p className="text-xs lg:text-sm text-secondary truncate">{author.role}</p>
-                      <p className="text-xs text-tertiary mt-0.5 lg:mt-1">{author.followers} followers</p>
+                Most followed writers
+            </h2>
+            <div className="space-y-3 lg:space-y-4">
+                {featuredLoading ? (
+                    <div className="text-center py-4">
+                        <Spin size="small" />
                     </div>
-                    <Button
-                      type="link"
-                      className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 p-0 shrink-0 text-xs lg:text-sm"
-                      onClick={() => {
-                        if (!user) {
-                          message.warning('Please login to follow authors');
-                          router.push('/login');
-                        }
-                      }}
-                    >
-                      Follow
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                ) : featuredWriters.length > 0 ? (
+                    featuredWriters.map((writer) => (
+                        <div key={writer.id} className="flex items-start gap-2 lg:gap-3">
+                            <Avatar 
+                                size={40} 
+                                src={getFullImageUrl(writer.avatar)} 
+                                icon={<UserOutlined />} 
+                                className="shrink-0 border-2 border-custom" 
+                            />
+                            <div className="flex-1 min-w-0">
+                                <Link 
+                                    href={`/profile/${writer.id}`} 
+                                    className="font-medium heading-color hover:text-green-600 dark:hover:text-green-400 transition-colors block truncate text-sm lg:text-base"
+                                >
+                                    {writer.name}
+                                </Link>
+                                {writer.bio && (
+                                    <p className="text-xs lg:text-sm text-secondary truncate">{writer.bio}</p>
+                                )}
+                                <p className="text-xs text-tertiary mt-0.5 lg:mt-1">
+                                    {writer.followersCount || 0} followers
+                                </p>
+                            </div>
+                            <Button
+                                type="link"
+                                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 p-0 shrink-0 text-xs lg:text-sm"
+                                onClick={async () => {
+                                    if (!user) {
+                                        message.warning('Please login to follow authors');
+                                        router.push('/login');
+                                        return;
+                                    }
+                                    try {
+                                        if (writer.isFollowing) {
+                                            await userService.unfollowUser(writer.id);
+                                            setFeaturedWriters(prev => prev.map(w => 
+                                                w.id === writer.id ? { ...w, isFollowing: false, followersCount: (w.followersCount || 1) - 1 } : w
+                                            ));
+                                            message.success('Unfollowed');
+                                        } else {
+                                            await userService.followUser(writer.id);
+                                            setFeaturedWriters(prev => prev.map(w => 
+                                                w.id === writer.id ? { ...w, isFollowing: true, followersCount: (w.followersCount || 0) + 1 } : w
+                                            ));
+                                            message.success('Followed');
+                                        }
+                                        // রিফ্রেশ করতে চাইলে ফিচার্ড লিস্ট রিলোড করুন
+                                        fetchFeaturedWriters();
+                                    } catch {
+                                        message.error('Failed');
+                                    }
+                                }}
+                            >
+                                {writer.isFollowing ? 'Following' : 'Follow'}
+                            </Button>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-secondary text-sm text-center py-4">No writers found</p>
+                )}
             </div>
+        </div>
 
             {user && (
               <div className="card-bg rounded-lg shadow-sm p-5 lg:p-6 transition-colors duration-300">
@@ -542,5 +457,14 @@ export default function FeedPage() {
         </div>
       </div>
     </div>
+    </>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FeedContent />
+    </Suspense>
   );
 }

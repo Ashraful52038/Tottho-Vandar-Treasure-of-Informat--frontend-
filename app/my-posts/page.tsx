@@ -3,8 +3,9 @@
 import PostCard from '@/components/posts/PostCard';
 import { userService } from '@/lib/api/user';
 import { useAppSelector } from '@/store/hooks/reduxHooks';
-import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Card, Spin, message } from 'antd';
+import { ArrowLeftOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { message } from 'antd';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -17,11 +18,7 @@ export default function MyPostsPage() {
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
-  // Redirect if not logged in
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
+  if (!user) { router.push('/login'); return null; }
 
   const fetchPosts = async (pageNum: number) => {
     setLoading(true);
@@ -39,66 +36,76 @@ export default function MyPostsPage() {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchPosts(1);
-    }
-  }, [user]);
-
-  const loadMore = () => {
-    if (!loading && hasMore) {
-      fetchPosts(page + 1);
-    }
-  };
+  useEffect(() => { if (user) fetchPosts(1); }, [user]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header with Back button */}
-        <div className="mb-6 flex items-center gap-4">
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-white! hover:text-white!"
-          >
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Posts</h1>
+    <div className="min-h-screen bg-[#f5f4f0] py-6 px-4">
+      <div className="max-w-3xl mx-auto">
+
+        {/* Back */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm text-[#7a7570] hover:text-[#1a1917] mb-5 transition-colors"
+        >
+          <ArrowLeftOutlined /> Back
+        </button>
+
+        {/* Header */}
+        <div className="bg-white rounded-2xl border border-[#e8e5df] overflow-hidden mb-5">
+          <div className="h-20 bg-linear-to-r from-[#2d6a4f] via-[#40916c] to-[#74c69d]" />
+          <div className="px-7 py-5 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-[#1a1917]" style={{ fontFamily: 'DM Serif Display, Georgia, serif' }}>
+                My Posts
+              </h1>
+              <p className="text-sm text-[#7a7570] mt-0.5">
+                {total > 0 ? `${total} post${total !== 1 ? 's' : ''} published` : 'No posts yet'}
+              </p>
+            </div>
+            <Link href="/posts/create">
+              <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
+                <EditOutlined /> Create Post
+              </button>
+            </Link>
+          </div>
         </div>
 
-        {/* Posts List */}
+        {/* Content */}
         {loading && page === 1 ? (
-          <div className="flex justify-center py-12">
-            <Spin size="large" />
+          <div className="flex justify-center py-20">
+            <LoadingOutlined className="text-4xl text-green-700" spin />
           </div>
+
         ) : posts.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 gap-6">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
+            <div className="flex flex-col gap-4">
+              {posts.map(post => <PostCard key={post.id} post={post} />)}
             </div>
+
             {hasMore && (
-              <div className="text-center mt-8">
-                <Button onClick={loadMore} loading={loading}>
-                  Load More
-                </Button>
-              </div>
+              <button
+                onClick={() => fetchPosts(page + 1)}
+                disabled={loading}
+                className="w-full mt-5 py-3 text-sm font-medium text-[#7a7570] border border-dashed border-[#d4cfc5] rounded-xl hover:border-green-600 hover:text-green-700 hover:bg-white disabled:opacity-50 transition-all"
+              >
+                {loading ? 'Loading...' : 'Load more ↓'}
+              </button>
             )}
           </>
+
         ) : (
-          <Card className="text-center py-12">
-            <p className="text-gray-500">You haven't created any posts yet.</p>
-            <Button
-              type="primary"
-              href="/posts/create"
-              className="mt-4 bg-green-600 hover:bg-green-700"
-            >
-              Create Your First Post
-            </Button>
-          </Card>
+          <div className="bg-white rounded-2xl border border-[#e8e5df] px-8 py-16 text-center">
+            <div className="text-5xl mb-4 opacity-30">📝</div>
+            <h2 className="text-base font-semibold text-[#1a1917] mb-2">No posts yet</h2>
+            <p className="text-sm text-[#7a7570] mb-6">Share your thoughts — write your first post.</p>
+            <Link href="/posts/create">
+              <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors mx-auto">
+                <EditOutlined /> Create Your First Post
+              </button>
+            </Link>
+          </div>
         )}
+
       </div>
     </div>
   );

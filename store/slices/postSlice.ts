@@ -60,7 +60,6 @@ export const createPost = createAsyncThunk(
             message.success('Post created successfully!');
             return response;
         } catch (error: any) {
-            console.error('API Error:', error.response?.data);
             message.error(error.response?.data?.error || 'Failed to create post');
             return rejectWithValue(error.response?.data);
         }
@@ -100,7 +99,6 @@ export const likePost = createAsyncThunk(
     async (id: string, { rejectWithValue }) => {
         try {
             const response = await postService.likePost(id);
-            console.log('Like API response:', response);
             return response;
         } catch (error: any) {
             return rejectWithValue(error.response?.data?.message || 'Failed to like post');
