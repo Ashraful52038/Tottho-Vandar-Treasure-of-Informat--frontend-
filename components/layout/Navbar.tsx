@@ -1,7 +1,5 @@
 'use client';
 
-import LoginModal from '@/app/(auth)/login/page';
-import SignupModal from '@/app/(auth)/signup/page';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { logout } from '@/store/slices/authSlice';
 import { Tag as TagType } from '@/types/tags';
@@ -22,6 +20,9 @@ import { Avatar, Badge, Button, Drawer, Dropdown, Input, MenuProps, message } fr
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import LoginModal from '../auth/LoginModal';
+import SignupModal from '../auth/SignupModal';
+import { useWebSocketContext } from '../notification/WebSocketContext';
 
 interface NavbarProps {
   onSearch?: (query: string) => void;
@@ -32,14 +33,6 @@ interface NavbarProps {
   tags?: TagType[];
   selectedTagIds?: string[];
 }
-
-// Mock notifications
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'like', message: 'John liked your post', time: '5 min ago', read: false },
-  { id: 2, type: 'comment', message: 'Sarah commented on your post', time: '1 hour ago', read: false },
-  { id: 3, type: 'follow', message: 'Mike started following you', time: '3 hours ago', read: true },
-  { id: 4, type: 'mention', message: 'Emma mentioned you in a comment', time: '1 day ago', read: true },
-];
 
 export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSelect, selectedTagIds = []}: NavbarProps) {
   const router = useRouter();
@@ -53,17 +46,17 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
   const [isMobile, setIsMobile] = useState(false);
   
   // Modal states
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
-
+  const { isConnected, notifications: wsNotifications, unreadCount: wsUnreadCount, markAllAsRead: wsMarkAllAsRead } = useWebSocketContext();
+  const [localNotifications, setLocalNotifications] = useState<any[]>([]);
   // Check if mobile view
   useEffect(() => {
-    const checkMobile = () => {
+    const checkMobile = () => { 
       setIsMobile(window.innerWidth < 1024);
     };
     checkMobile();
@@ -95,6 +88,25 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
       document.documentElement.classList.add('dark');
     }
   }, []);
+
+    useEffect(() => {
+    if (wsNotifications.length > 0) {
+      const formattedNotifs = wsNotifications.map((notif: any, index: number) => ({
+        id: index,
+        type: notif.type,
+        message: `${notif.title}: ${notif.message}`,
+        time: new Date(notif.createdAt * 1000).toLocaleTimeString(),
+        read: false
+      }));
+      setLocalNotifications(formattedNotifs);
+    }
+  }, [wsNotifications]);
+
+  const handleMarkAllAsReadLocal = () => {
+    wsMarkAllAsRead();
+    setLocalNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    message.success('All notifications marked as read');
+  };
 
   // Update local search when prop changes
   useEffect(() => {
@@ -208,9 +220,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
           <Button 
             type="link" 
             size="small" 
-            onClick={() => {
-              setNotifications(notifications.map(n => ({ ...n, read: true })));
-            }}
+            onClick={handleMarkAllAsReadLocal}
             className="text-green-600"
           >
             Mark all as read
@@ -222,7 +232,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
     {
       type: 'divider',
     },
-    ...(notifications.length > 0 ? notifications.map((notif) => ({
+    ...(localNotifications.length > 0 ? localNotifications.map((notif) => ({
       key: notif.id.toString(),
       label: (
         <div className={`w-80 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
@@ -262,7 +272,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
   ];
 
   // Get unread count
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const displayUnreadCount = localNotifications.filter(n => !n.read).length;
 
   const handleWritePost = () => {
     if (!user) {
@@ -279,6 +289,11 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
   return (
     <>
       {/* Navbar */}
+      {user && !isConnected && (
+        <div className="fixed bottom-4 right-4 bg-yellow-500 text-white px-3 py-1 rounded-full text-xs z-50">
+          🔌 Reconnecting...
+        </div>
+      )}
       <nav className="nav-bg border-custom border-b sticky top-0 z-10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -328,7 +343,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
                     </div>
                   )}
                 >
-                  <Badge count={unreadCount} size="small" offset={[-5, 5]}>
+                  <Badge count={displayUnreadCount} size="small" offset={[-5, 5]}>
                     <Button
                       type="text"
                       icon={<BellOutlined className="text-xl" />}
@@ -400,7 +415,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
                 className="text-secondary hover:text-primary"
               />
               {user && (
-                <Badge count={unreadCount} size="small">
+                <Badge count={displayUnreadCount} size="small">
                   <Button
                     type="text"
                     icon={<BellOutlined />}
@@ -486,9 +501,7 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
           <Button 
             type="link" 
             size="small" 
-            onClick={() => {
-              setNotifications(notifications.map(n => ({ ...n, read: true })));
-            }}
+            onClick={handleMarkAllAsReadLocal}
             className="text-green-600"
           >
             Mark all read
@@ -496,8 +509,8 @@ export default function Navbar({ onSearch, searchQuery = '',tags = [], onTagSele
         }
       >
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {notifications.length > 0 ? (
-            notifications.map(notif => (
+          {localNotifications.length > 0 ? (
+            localNotifications.map(notif => (
               <div 
                 key={notif.id} 
                 className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${!notif.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}

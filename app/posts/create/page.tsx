@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import 'react-quill/dist/quill.snow.css';
+
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
@@ -42,6 +42,7 @@ export default function CreatePostPage() {
   const [titleError, setTitleError] = useState('');
   const [tagError, setTagError] = useState('');
 
+  
   useEffect(() => { setIsMounted(true); }, []);
   useEffect(() => { if (user) dispatch(fetchTags()); }, [dispatch, user]);
   useEffect(() => { if (storeTags?.length > 0) setAvailableTags(storeTags); }, [storeTags]);
@@ -113,6 +114,7 @@ export default function CreatePostPage() {
   const inputCls = 'w-full px-3.5 py-2.5 text-sm rounded-lg border border-[#e8e5df] outline-none focus:border-green-600 focus:ring-2 focus:ring-green-50 transition-all bg-white';
 
   return (
+    <>
     <div className="min-h-screen bg-[#f5f4f0]">
 
       {/* Sticky top bar */}
@@ -254,5 +256,6 @@ export default function CreatePostPage() {
 
       </div>
     </div>
+    </>
   );
 }

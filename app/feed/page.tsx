@@ -1,26 +1,29 @@
 'use client';
 
-import FeedSidebar from '@/components/feed/FeedSidebar';
 import FeedTabsContent from '@/components/feed/FeedTabs';
 import Navbar from '@/components/layout/Navbar';
-import PostCard, { normalizePost } from '@/components/posts/PostCard';
 import { FollowUser, userService } from '@/lib/api/user';
 import { useAppDispatch, useAppSelector } from '@/store/hooks/reduxHooks';
 import { fetchPosts, fetchTags } from '@/store/slices/postSlice';
 import { Tag as TagType } from '@/types/tags';
 import { getFullImageUrl } from '@/utils/imageUtils';
 import {
-  CloseOutlined,
-  ReloadOutlined,
+  BookOutlined,
+  CloseOutlined, // ✅ যোগ করুন
+  FireOutlined,
+  ReloadOutlined, // ✅ যোগ করুন
+  RiseOutlined, // ✅ যোগ করুন
+  UserOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { Button, Empty, Select, Space, Spin, Tag, message } from 'antd';
+import { Avatar, Button, Select, Space, Spin, Tag, message } from 'antd';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 const { Option } = Select;
 
-export default function FeedPage() {
+function FeedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
@@ -204,6 +207,7 @@ export default function FeedPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-primary">
       <Navbar
         onSearch={handleSearch}
@@ -335,7 +339,7 @@ export default function FeedPage() {
             </div>
             
               <div className={`flex flex-wrap gap-2 transition-all duration-300 ${
-                showAllTopics ? 'max-h-[500px]' : 'max-h-[200px]'
+                showAllTopics ? 'max-h-125' : 'max-h-50'
               } overflow-y-auto pr-2`}>
                 {(showAllTopics ? tags : tags.slice(0, 8)).map((tag: TagType) => (
                   <button
@@ -453,5 +457,14 @@ export default function FeedPage() {
         </div>
       </div>
     </div>
+    </>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FeedContent />
+    </Suspense>
   );
 }
